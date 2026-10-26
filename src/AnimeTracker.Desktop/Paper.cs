@@ -59,6 +59,7 @@ public sealed class PaperListBox:ListBox
 }
 public sealed class PaperScroll:ScrollViewer
 {
+    protected override Type StyleKeyOverride=>typeof(ScrollViewer);
     readonly DispatcherTimer timer=new(){Interval=TimeSpan.FromMilliseconds(16)};
     double target;
     public PaperScroll(){timer.Tick+=(_,_)=>{double delta=target-Offset.Y;if(Math.Abs(delta)<0.5){Offset=new Vector(Offset.X,target);timer.Stop();}else Offset=new Vector(Offset.X,Offset.Y+delta*0.28);};DetachedFromVisualTree+=(_,_)=>timer.Stop();}
