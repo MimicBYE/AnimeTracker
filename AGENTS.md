@@ -16,6 +16,7 @@
 - Новые исходники Windows добавляйте в `scripts/windows-sources.txt`. Проверьте их попадание в исходный архив. CI, `AGENTS.md`, инструкции и скрипты тоже должны входить в исходники релиза.
 - Изменения CI проверяйте через `tests/Release.Tests.ps1`; общую логику — через `dotnet run --project tests/AnimeTracker.CoreTests -c Release`; Windows-пакет — через `scripts/release-windows.ps1`.
 - Не заявляйте о проверке нативного UI, Spaces или автозапуска на основании одного успешного build/test.
+- При добавлении платформы или изменении зависимостей, рендеринга, кеша и требовательных функций обновляйте `docs/SYSTEM-REQUIREMENTS.md` и связанные README/release notes. Разделяйте техническую границу, предварительный бюджет и измерения на устройстве; план портов — `docs/PLATFORM-ROADMAP.md`.
 
 ## Git и pull request
 
