@@ -11,8 +11,8 @@ using Avalonia.VisualTree;
 
 internal static class Program {
  static T Field<T>(MainWindow window,string name)=>(T)typeof(MainWindow).GetField(name,BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(window)!;
- static void Check(bool ok,string message){if(!ok)throw new Exception(message);}
- static void PumpUntil(Func<bool> done){using var stop=new CancellationTokenSource(TimeSpan.FromSeconds(5));var poll=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(10)};poll.Tick+=(_,_)=>{if(done())stop.Cancel();};poll.Start();try{Dispatcher.UIThread.MainLoop(stop.Token);}finally{poll.Stop();}Check(done(),"UI timeout");}
+ internal static void Check(bool ok,string message){if(!ok)throw new Exception(message);}
+ internal static void PumpUntil(Func<bool> done){using var stop=new CancellationTokenSource(TimeSpan.FromSeconds(5));var poll=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(10)};poll.Tick+=(_,_)=>{if(done())stop.Cancel();};poll.Start();try{Dispatcher.UIThread.MainLoop(stop.Token);}finally{poll.Stop();}Check(done(),"UI timeout");}
  [STAThread] static int Main(string[] args) {
   string root=Path.Combine(Path.GetTempPath(),"anime-tracker-ui-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
   try {
@@ -49,7 +49,8 @@ internal static class Program {
     Check(ViewPreferences.Load(viewPath).Search=="Последний запрос","Fast close lost latest search");
     results.Add(new{entries=size,initialControlConstructionMs=initial,inputHandlersMs=timings,immediateSaves,realizedContainers=realized,checks="debounce, single write, finite viewport/scroll, smooth wheel, search/status, flush on close"});
    }
-   Console.WriteLine(JsonSerializer.Serialize(new{os=System.Runtime.InteropServices.RuntimeInformation.OSDescription,framework=Environment.Version.ToString(),mode="input timing on unshown Avalonia controls, then transparent native-window checks; synthetic data, no covers/network; not frame-time measurements",results},new JsonSerializerOptions{WriteIndented=true}));
+   var settings=SettingsFlowTests.Run(root,args.Length==2&&args[0]=="--screenshots"?args[1]:null);
+   Console.WriteLine(JsonSerializer.Serialize(new{os=System.Runtime.InteropServices.RuntimeInformation.OSDescription,framework=Environment.Version.ToString(),mode="input timing on unshown Avalonia controls, then transparent native-window checks; synthetic data, no covers/network; not frame-time measurements",results,settings},new JsonSerializerOptions{WriteIndented=true}));
    return 0;
   } catch(Exception e){Console.Error.WriteLine(e);return 1;}
   finally{Directory.Delete(root,true);}
