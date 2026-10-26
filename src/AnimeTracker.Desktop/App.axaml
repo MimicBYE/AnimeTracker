@@ -1,0 +1,29 @@
+<Application xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="AnimeTracker.Desktop.App" RequestedThemeVariant="Light">
+ <Application.Resources>
+  <Color x:Key="SystemAccentColor">#B9862C</Color>
+  <SolidColorBrush x:Key="SystemControlHighlightAccentBrush">#B9862C</SolidColorBrush>
+ </Application.Resources>
+ <Application.Styles>
+  <FluentTheme />
+  <Style Selector="Window"><Setter Property="Background" Value="#F5E5A6"/><Setter Property="Foreground" Value="#47361D"/><Setter Property="FontFamily" Value="Arial"/><Setter Property="FontSize" Value="13"/></Style>
+  <Style Selector="TextBlock"><Setter Property="Foreground" Value="#47361D"/></Style>
+  <Style Selector="Button"><Setter Property="Background" Value="#EAD490"/><Setter Property="Foreground" Value="#47361D"/><Setter Property="CornerRadius" Value="6"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Padding" Value="11,8"/><Setter Property="Cursor" Value="Hand"/></Style>
+  <Style Selector="Button:pointerover /template/ ContentPresenter"><Setter Property="Background" Value="#E3C977"/></Style>
+  <Style Selector="TextBox"><Setter Property="Background" Value="#FFF8DF"/><Setter Property="Foreground" Value="#47361D"/><Setter Property="BorderBrush" Value="#D6C18B"/><Setter Property="CornerRadius" Value="5"/><Setter Property="Padding" Value="9,7"/></Style>
+  <Style Selector="ComboBox"><Setter Property="Background" Value="#FFF8DF"/><Setter Property="Foreground" Value="#47361D"/><Setter Property="BorderBrush" Value="#D6C18B"/><Setter Property="CornerRadius" Value="5"/><Setter Property="Padding" Value="9,7"/></Style>
+  <Style Selector="ComboBoxItem"><Setter Property="Foreground" Value="#47361D"/></Style>
+  <Style Selector="TabControl"><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Padding" Value="0"/></Style>
+  <Style Selector="TabControl /template/ ItemsPresenter#PART_ItemsPresenter"><Setter Property="Margin" Value="0,0,44,0"/></Style>
+  <Style Selector="TabItem">
+   <Setter Property="FontSize" Value="13"/><Setter Property="FontWeight" Value="Normal"/><Setter Property="Foreground" Value="#896F3E"/><Setter Property="Padding" Value="16,11"/><Setter Property="Cursor" Value="Hand"/>
+   <Setter Property="Template"><ControlTemplate><Border Name="TabSurface" Padding="{TemplateBinding Padding}" Background="Transparent" CornerRadius="5"><ContentPresenter Content="{TemplateBinding Header}" ContentTemplate="{TemplateBinding HeaderTemplate}" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border></ControlTemplate></Setter>
+  </Style>
+  <Style Selector="TabItem:pointerover /template/ Border#TabSurface"><Setter Property="Background" Value="#EFDA8D"/></Style>
+  <Style Selector="TabItem:selected"><Setter Property="Foreground" Value="#47361D"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
+  <Style Selector="TabItem:selected /template/ Border#TabSurface"><Setter Property="Background" Value="#E8CF79"/></Style>
+  <Style Selector="Button.gear"><Setter Property="Background" Value="Transparent"/><Setter Property="Width" Value="36"/><Setter Property="Height" Value="36"/><Setter Property="Padding" Value="8"/></Style>
+  <Style Selector="Button.search-result"><Setter Property="HorizontalAlignment" Value="Stretch"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/></Style>
+  <Style Selector="ScrollBar"><Setter Property="Background" Value="#F1E5BE"/></Style>
+  <Style Selector="ScrollBar /template/ Thumb"><Setter Property="Background" Value="#C4A052"/></Style>
+ </Application.Styles>
+</Application>

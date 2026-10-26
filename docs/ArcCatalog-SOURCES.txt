@@ -1,0 +1,32 @@
+Справочник арок, версия 2026-10-25
+
+Идентификаторы MyAnimeList: Naruto (2002) 20, One Piece 21, Bleach (2004) 269.
+Shippuden и Thousand-Year Blood War — другие записи; этот справочник к ним не применяется.
+
+Именованные арки: числовые границы и русские адаптации названий по материалам сообществ:
+One Piece Wiki contributors: https://onepiece.fandom.com/wiki/Story_Arcs
+и https://onepiece.fandom.com/wiki/Episode_Guide
+Bleach Wiki contributors: https://bleach.fandom.com/wiki/Episodes
+Narutopedia contributors:
+https://naruto.fandom.com/wiki/Prologue_%E2%80%94_Land_of_Waves
+https://naruto.fandom.com/wiki/Ch%C5%ABnin_Exams_(Arc)
+https://naruto.fandom.com/wiki/Konoha_Crush_(Arc)
+https://naruto.fandom.com/wiki/Search_for_Tsunade
+https://naruto.fandom.com/wiki/Land_of_Tea_Escort_Mission
+https://naruto.fandom.com/wiki/Sasuke_Recovery_Mission
+Адаптированные названия и подборка арок распространяются на условиях CC BY-SA:
+https://creativecommons.org/licenses/by-sa/3.0/
+Изменения: русский перевод, сокращение названий, формат диапазонов; описания сюжета не копируются.
+
+Отметки серий по AnimeFillerList (редакционная классификация сообщества):
+https://www.animefillerlist.com/shows/naruto — источник от 14.04.2024, 1–220.
+https://www.animefillerlist.com/shows/bleach — источник от 18.11.2025, 1–366.
+https://www.animefillerlist.com/shows/one-piece — источник от 28.06.2026, 1–1168.
+Даты отражают даты страниц источников, а не дату сетевого обновления приложения.
+canon соответствует Manga Canon; anime — Anime Canon; mixed — Mixed Canon/Filler; filler — Filler.
+
+Это встроенный снимок, обновляемый со сборкой приложения, не сетевой сервис.
+Именованные арки Naruto пока покрывают шесть арок до 135-й серии; отметки филлеров есть для всех 220.
+Именованные арки One Piece до Эггхеда включительно; отдельные специальные эпизоды могут не иметь арки.
+Серии за пределами покрытия остаются неизвестными. Имена арок могут содержать спойлеры.
+Личные правки находятся отдельно в data/arcs.xml; встроенная база их не перезаписывает.

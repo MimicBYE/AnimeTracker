@@ -1,0 +1,14 @@
+* text=auto
+*.cs text eol=crlf
+*.ps1 text eol=crlf
+*.md text eol=lf
+*.xml text eol=lf
+*.xaml text eol=lf
+*.ico binary
+*.png binary
+*.zip binary
+
+*.axaml text eol=lf
+*.sh text eol=lf
+*.plist text eol=lf
+*.icns binary

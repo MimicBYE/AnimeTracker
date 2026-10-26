@@ -1,0 +1,41 @@
+# Personal library, settings, imports and caches
+/data/
+/test-*/
+/test-*.tmp
+
+# Build and release output
+/artifacts/
+/dist/
+*.exe
+*.pdb
+*.tmp
+*.bak
+/test-result.txt
+/import-test.txt
+/catalog-test.txt
+/desktop-test.txt
+/ratings-live-test.txt
+/desktop-layers.txt
+/startup-error.txt
+/top-preview-*.png
+/widget-*.png
+
+# Local diagnostic and maintenance entry points (not part of the application build)
+/Diagnose.cs
+/EnrichRunner.cs
+/ImportRunner.cs
+/RatingsCheck.cs
+
+# Editor and operating-system files
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+Thumbs.db
+.DS_Store
+/.tools/
+**/bin/
+**/obj/
+/Mac/artifacts/
+/Mac/dist/

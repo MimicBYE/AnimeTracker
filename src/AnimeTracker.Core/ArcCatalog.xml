@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Curated factual episode ranges. Russian names adapted from the linked community wikis (CC BY-SA); see ArcCatalog-SOURCES.txt. Not a live feed. -->
+<catalog version="2026-10-25">
+ <anime mal="20" source="https://naruto.fandom.com/wiki/Plot_of_Naruto" flagsSource="https://www.animefillerlist.com/shows/naruto" date="14.04.2024">
+  <arc key="waves" name="Страна Волн" episodes="1-19"/>
+  <arc key="chunin" name="Экзамен на чунина" episodes="20-67"/>
+  <arc key="konoha" name="Разрушение Конохи" episodes="68-80"/>
+  <arc key="tsunade" name="Поиски Цунаде" episodes="81-100"/>
+  <arc key="tea" name="Миссия в Стране Чая" episodes="102-106"/>
+  <arc key="sasuke" name="Возвращение Саске" episodes="107-135"/>
+  <flags type="canon" episodes="1-6,8,10-13,17,22,25,31-36,42,48,50-51,61-62,64-65,67-68,73,75-82,84-96,107-111,115-125,128-129,132-135"/>
+  <flags type="mixed" episodes="7,9,14-16,18-21,23-24,27-30,37-41,43-47,49,52-60,63,66,69-72,74,83,98-100,112-114,126-127,130-131,141-142,220"/>
+  <flags type="filler" episodes="26,97,101-106,136-140,143-219"/>
+ </anime>
+ <anime mal="269" source="https://bleach.fandom.com/wiki/Episodes" flagsSource="https://www.animefillerlist.com/shows/bleach" date="18.11.2025">
+  <arc key="substitute" name="Заместитель синигами" episodes="1-20"/>
+  <arc key="entry" name="Общество душ: проникновение" episodes="21-41"/>
+  <arc key="rescue" name="Общество душ: спасение" episodes="42-63"/>
+  <arc key="bount" name="Баунто" episodes="64-91"/>
+  <arc key="bount-assault" name="Баунто: нападение на Общество душ" episodes="92-109"/>
+  <arc key="arrival" name="Арранкары: появление" episodes="110-131"/>
+  <arc key="hueco" name="Проникновение в Уэко Мундо" episodes="132-151"/>
+  <arc key="fight" name="Арранкары: ожесточённая битва" episodes="152-167"/>
+  <arc key="amagai" name="Новый капитан Сюсукэ Амагай" episodes="168-189"/>
+  <arc key="versus" name="Арранкары против синигами" episodes="190-205"/>
+  <arc key="past" name="Прошлое" episodes="206-212"/>
+  <arc key="karakura" name="Решающая битва за Каракуру" episodes="213-229"/>
+  <arc key="zanpakuto" name="Неизвестные истории дзанпакто" episodes="230-255"/>
+  <arc key="beast" name="Звериные мечи" episodes="256-265"/>
+  <arc key="downfall" name="Арранкары: падение" episodes="266-316"/>
+  <arc key="gotei" name="Вторжение в Готэй 13" episodes="317-342"/>
+  <arc key="lost" name="Потерянный заместитель синигами" episodes="343-366"/>
+  <flags type="canon" episodes="1-7,9-26,28-31,34-45,47-49,51-63,110,112-115,117-118,121-123,125-127,138-140,142,144-145,150-155,157-159,162-167,191-192,194-203,208,210-212,215-221,224-227,269-273,275,277-283,286,289,292-294,297,300-302,306-309,344,346,348-350,352-354,356,358-366"/>
+  <flags type="mixed" episodes="8,27,32,46,109,111,116,119-120,124,141,143,146,156,160-161,190,193,206-207,209,222-223,267-268,274,276,284-285,288,290-291,295-296,310,342-343,345,347,351,357"/>
+  <flags type="filler" episodes="33,50,64-108,128-137,147-149,168-189,204-205,213-214,228-266,287,298-299,303-305,311-341,355"/>
+ </anime>
+ <anime mal="21" source="https://onepiece.fandom.com/wiki/Story_Arcs" flagsSource="https://www.animefillerlist.com/shows/one-piece" date="28.06.2026">
+  <arc key="romance" name="Рассвет приключений" episodes="1-3"/>
+  <arc key="orange" name="Оранжевый город" episodes="4-8"/>
+  <arc key="syrup" name="Деревня Сироп" episodes="9-18"/>
+  <arc key="baratie" name="Барати" episodes="19-30"/>
+  <arc key="arlong" name="Арлонг-парк" episodes="31-44"/>
+  <arc key="loguetown" name="Логтаун" episodes="45,48-53"/>
+  <arc key="buggy" name="Приключения команды Багги" episodes="46-47"/>
+  <arc key="warship" name="Остров Военного Корабля" episodes="54-61"/>
+  <arc key="reverse" name="Реверс-Маунтин" episodes="62-63"/>
+  <arc key="whisky" name="Виски-Пик" episodes="64-67"/>
+  <arc key="koby" name="Дневник Коби и Хельмеппо" episodes="68-69"/>
+  <arc key="garden" name="Литл-Гарден" episodes="70-77"/>
+  <arc key="drum" name="Драм" episodes="78-91"/>
+  <arc key="arabasta" name="Алабаста" episodes="92-130"/>
+  <arc key="post-arabasta" name="После Алабасты" episodes="131-135"/>
+  <arc key="goat" name="Козий остров" episodes="136-138"/>
+  <arc key="ruluka" name="Остров Рулука" episodes="139-143"/>
+  <arc key="jaya" name="Джая" episodes="144-152"/>
+  <arc key="skypiea" name="Скайпия" episodes="153-195"/>
+  <arc key="g8" name="G-8" episodes="196-206"/>
+  <arc key="long-ring" name="Лонг-Ринг-Лонг-Ленд" episodes="207-219"/>
+  <arc key="dream" name="Сон океана" episodes="220-224"/>
+  <arc key="foxy" name="Возвращение Фокси" episodes="225-226"/>
+  <arc key="water" name="Уотер-7" episodes="227-263"/>
+  <arc key="enies" name="Эниес-Лобби" episodes="264-290,293-302,304-312"/>
+  <arc key="boss" name="Босс Луффи: специальные эпизоды" episodes="291-292,303,406-407"/>
+  <arc key="post-enies" name="После Эниес-Лобби" episodes="313-325"/>
+  <arc key="ice" name="Ледяные охотники" episodes="326-336"/>
+  <arc key="thriller" name="Триллер-Барк" episodes="337-381"/>
+  <arc key="spa" name="Спа-остров" episodes="382-384"/>
+  <arc key="sabaody" name="Архипелаг Сабаоди" episodes="385-405"/>
+  <arc key="amazon" name="Амазон Лили" episodes="408-417"/>
+  <arc key="separation" name="Разлука команды" episodes="418-421,453-456"/>
+  <arc key="impel" name="Импел-Даун" episodes="422-425,430-452"/>
+  <arc key="east" name="Литл-Ист-Блю" episodes="426-429"/>
+  <arc key="marineford" name="Маринфорд" episodes="457-489"/>
+  <arc key="post-war" name="После войны" episodes="490-491,493-516"/>
+  <arc key="return" name="Возвращение на Сабаоди" episodes="517-522"/>
+  <arc key="fishman" name="Остров Рыболюдей" episodes="523-541,543-574"/>
+  <arc key="z" name="Амбиции Z" episodes="575-578"/>
+  <arc key="punk" name="Панк-Хазард" episodes="579-589,591-625"/>
+  <arc key="caesar" name="Возвращение Цезаря" episodes="626-628"/>
+  <arc key="dressrosa" name="Дрессроза" episodes="629-746"/>
+  <arc key="silver" name="Серебряная шахта" episodes="747-750"/>
+  <arc key="zou" name="Зоя" episodes="751-779"/>
+  <arc key="rookie" name="Новобранцы дозора" episodes="780-782"/>
+  <arc key="cake" name="Тотто Ленд" episodes="783-877"/>
+  <arc key="levely" name="Ревери" episodes="878-889"/>
+  <arc key="wano" name="Страна Вано" episodes="890-894,897-906,908-1028,1031-1085"/>
+  <arc key="cidre" name="Гильдия Сидра" episodes="895-896"/>
+  <arc key="uta" name="Прошлое Уты" episodes="1029-1030"/>
+  <arc key="egghead" name="Эггхед" episodes="1086-1155"/>
+  <flags type="canon" episodes="1-44,48-49,52-53,62-67,70-92,94-97,100,103-130,144-195,207-212,217-219,227-278,284-290,293-302,304-316,320-325,337-353,355-381,385-405,408-417,422-425,430-452,459-488,490-491,493-496,500-505,507-519,521-541,543-573,579-589,591-624,629-632,634-652,654-656,658-678,680-689,691-730,732-736,739-746,752-774,776,779,783-788,790-802,804-806,808-877,880,886,891-894,897-906,908-923,925-987,990,992-1028,1031-1083,1085-1168"/>
+  <flags type="mixed" episodes="45-47,61,68-69,101,226,354,421,489,520,574,625,628,633,653,657,679,690,731,738,751,777-778,789,803,807,878-879,881-885,887-890,924,988-989,991"/>
+  <flags type="filler" episodes="54-60,98-99,102,131-143,196-206,220-225,279-283,291-292,303,317-319,326-336,382-384,406-407,426-429,457-458,492,542,575-578,590,626-627,747-750,780-782,895-896,907,1029-1030"/>
+  <flags type="anime" episodes="50-51,93,213-216,418-420,453-456,497-499,506,737,775,1084"/>
+ </anime>
+</catalog>
