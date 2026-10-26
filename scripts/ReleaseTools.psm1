@@ -62,8 +62,8 @@ function Test-PackageVersion {
 function Get-SourceFiles {
     param([Parameter(Mandatory)][string]$Root)
     $rootPath = [IO.Path]::GetFullPath($Root).TrimEnd('\','/')
-    $names = @('README.md','VERSION','NuGet.Config','AnimeTracker.exe.config','.gitignore','.gitattributes','AGENTS.md','CONTRIBUTING.md','global.json')
-    $extensions = @('.cs','.csproj','.xaml','.axaml','.xml','.ico','.icns','.manifest','.plist','.ps1','.psm1','.sh','.txt','.md','.yml','.yaml','.json')
+    $names = @('README.md','VERSION','NuGet.Config','Directory.Build.props','AnimeTracker.exe.config','.gitignore','.gitattributes','AGENTS.md','CONTRIBUTING.md','SECURITY.md','global.json')
+    $extensions = @('.cs','.csproj','.props','.xaml','.axaml','.xml','.ico','.icns','.manifest','.plist','.ps1','.psm1','.sh','.txt','.md','.yml','.yaml','.json')
     $blocked = '(^|/)(bin|obj|data|covers|imports|artifacts|\.git|\.tools)(/|$)'
     foreach ($folder in @('src','scripts','docs','tests','.github')) {
         $path = Join-Path $rootPath $folder

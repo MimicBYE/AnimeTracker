@@ -4,6 +4,7 @@
 *.psm1 text eol=crlf
 *.md text eol=lf
 *.xml text eol=lf
+*.props text eol=lf
 *.xaml text eol=lf
 *.ico binary
 *.png binary

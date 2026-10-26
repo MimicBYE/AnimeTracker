@@ -46,9 +46,9 @@ try{
     Reject {Get-PublicationAction $sha '' ([pscustomobject]@{target_commitish=$other;draft=$true})} 'Conflicting draft accepted'
     Test-ExistingAsset ([pscustomobject]@{state='uploaded';size=12;digest=('sha256:'+$sha)}) 12 $sha
     Reject {Test-ExistingAsset ([pscustomobject]@{state='uploaded';size=12;digest=('sha256:'+$other)}) 12 $sha} 'Conflicting asset accepted'
-    $source=Join-Path $scratch 'source';Write-Fixture $source 'README.md';Write-Fixture $source 'AGENTS.md';Write-Fixture $source '.github/workflows/ci.yml';Write-Fixture $source 'scripts/example.psm1';Write-Fixture $source 'tests/Example.ps1'
+    $source=Join-Path $scratch 'source';Write-Fixture $source 'README.md';Write-Fixture $source 'AGENTS.md';Write-Fixture $source 'SECURITY.md';Write-Fixture $source 'Directory.Build.props';Write-Fixture $source '.github/workflows/ci.yml';Write-Fixture $source 'scripts/example.psm1';Write-Fixture $source 'tests/Example.ps1'
     foreach($name in @('data/library.xml','src/obj/leak.cs','src/bin/leak.cs','artifacts/secrets.txt','.tools/sdk.json','.github/.env')){Write-Fixture $source $name}
-    $files=@(Get-SourceFiles $source);Assert ($files.Count -eq 5 -and $files -contains '.github/workflows/ci.yml' -and $files -contains 'AGENTS.md' -and $files -contains 'tests/Example.ps1') 'Source inventory leaked private/generated files or lost infrastructure'
+    $files=@(Get-SourceFiles $source);Assert ($files.Count -eq 7 -and $files -contains '.github/workflows/ci.yml' -and $files -contains 'AGENTS.md' -and $files -contains 'SECURITY.md' -and $files -contains 'Directory.Build.props' -and $files -contains 'tests/Example.ps1') 'Source inventory leaked private/generated files or lost infrastructure/security policy'
     $metadata=Join-Path $scratch 'metadata'
     foreach($name in @('VERSION','src/AnimeTracker.Windows/Version.cs','src/AnimeTracker.Windows/Assets/app.manifest','src/AnimeTracker.Core/AnimeTracker.Core.csproj','src/AnimeTracker.Desktop/AnimeTracker.Desktop.csproj','src/AnimeTracker.Desktop/Assets/Info.plist')){Write-Fixture $metadata $name ([IO.File]::ReadAllText((Join-Path $root $name)))}
     & (Join-Path $root 'scripts/set-version.ps1') -Version '1.2.3' -Root $metadata

@@ -20,8 +20,11 @@
 2. **Core:** на Ubuntu, Windows и macOS запускает тесты инфраструктуры и общей логики. Проверяются XML/GZIP-импорт, миграция библиотеки, статусы и серии, фильтры, заметки, арки, рекомендации и загрузка обложек через локальные HTTP-заглушки.
 3. **Windows package:** компилирует WPF, проверяет упакованный EXE, импорт и повторную сборку из распакованного source ZIP.
 4. **macOS package:** на macOS собирает самостоятельное ARM64-приложение, применяет локальную ad-hoc подпись и проверяет её. Архив сохраняет Unix-права запуска.
-5. **Verify release bundle:** получает только артефакты этого запуска и попытки, проверяет три архива, одинаковый коммит/версию/канал, отсутствие личных данных, структуру Mac-пакета и права 0755. Создаёт общий SHA-256.
-6. **Publish release:** только после всех предыдущих проверок создаёт черновик, загружает Windows, macOS, source ZIP и `SHA256SUMS.txt`, сравнивает размеры и SHA-256 с ответами GitHub и публикует комплект целиком.
+5. **Dependency audit:** проверяет прямые и транзитивные NuGet-зависимости всех SDK-проектов. High/Critical, неизвестный формат отчёта и недоступная база блокируют проверку. JSON-отчёт сохраняется как Actions artifact. Эта же reusable workflow запускается еженедельно и вручную.
+6. **Verify release bundle:** только после тестов, аудита и упаковки получает артефакты этого запуска и попытки, проверяет три архива, одинаковый коммит/версию/канал, отсутствие личных данных, структуру Mac-пакета и права 0755. Создаёт общий SHA-256.
+7. **Publish release:** только после всех предыдущих проверок создаёт черновик, загружает Windows, macOS, source ZIP и `SHA256SUMS.txt`, сравнивает размеры и SHA-256 с ответами GitHub и публикует комплект целиком.
+
+Отдельный **Dependency review** проверяет изменения зависимостей в PR и отклоняет новые High/Critical во всех scopes. Dependabot еженедельно открывает PR обновлений NuGet и GitHub Actions в `dev`; security updates GitHub могут направляться в основную ветку. Auto-merge не включён. Политика, приватный канал сообщения об уязвимостях и границы проверки описаны в [SECURITY.md](../SECURITY.md).
 
 Официальные Actions закреплены полными SHA. SDK выбран в `global.json`. Проверки и упаковка имеют `contents: read`, checkout не сохраняет credentials. Только последний job получает `contents: write`; отдельный PAT не нужен, используется `GITHUB_TOKEN`. Workflow не использует `pull_request_target` и не запускает код из PR с токеном публикации.
 
@@ -48,6 +51,8 @@
 
 ```powershell
 ./tests/Release.Tests.ps1
+./tests/DependencyAudit.Tests.ps1
+./scripts/check-dependencies.ps1
 dotnet run --project tests/AnimeTracker.CoreTests -c Release
 ./scripts/release-windows.ps1
 ./scripts/build-macos.ps1

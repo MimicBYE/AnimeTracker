@@ -37,6 +37,13 @@ jobs:
         shell: pwsh
         run: ./scripts/get-release-context.ps1
 
+  security:
+    name: Dependency audit
+    needs: plan
+    uses: ./.github/workflows/dependency-audit.yml
+    permissions:
+      contents: read
+
   core:
     name: Core (${{ matrix.os }})
     needs: plan
@@ -110,7 +117,7 @@ jobs:
 
   verify:
     name: Verify release bundle
-    needs: [plan, core, windows, macos]
+    needs: [plan, security, core, windows, macos]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:

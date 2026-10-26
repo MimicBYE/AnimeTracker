@@ -46,7 +46,7 @@ if ($fileVersion.FileVersion -ne $assemblyVersion -or $fileVersion.ProductVersio
 [xml]$manifest = Get-Content -LiteralPath (Join-Path $root 'src/AnimeTracker.Windows/Assets/app.manifest') -Raw
 if ($manifest.assembly.assemblyIdentity.version -ne $assemblyVersion) { throw 'Manifest version does not match VERSION.' }
 
-$documentation = @('README.md','VERSION') + @(Get-ChildItem -LiteralPath (Join-Path $root 'docs') -File -Recurse | Where-Object {$_.Extension -in @('.md','.txt')} | ForEach-Object {$_.FullName.Substring($root.Length+1).Replace('\','/')})
+$documentation = @('README.md','VERSION','SECURITY.md','AGENTS.md','CONTRIBUTING.md') + @(Get-ChildItem -LiteralPath (Join-Path $root 'docs') -File -Recurse | Where-Object {$_.Extension -in @('.md','.txt')} | ForEach-Object {$_.FullName.Substring($root.Length+1).Replace('\','/')})
 foreach ($file in $documentation) { $target=Join-Path $binary $file;New-Item -ItemType Directory -Path ([IO.Path]::GetDirectoryName($target)) -Force|Out-Null;Copy-Item -LiteralPath (Join-Path $root $file) -Destination $target }
 $binaryFiles = @('AnimeTracker.exe','AnimeTracker.exe.config') + $documentation
 $sourceFiles = @(Get-SourceFiles $root)
