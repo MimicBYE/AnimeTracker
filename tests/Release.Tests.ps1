@@ -60,6 +60,11 @@ try{
     Assert ((Get-FileHash (Join-Path $metadata 'VERSION')).Hash -eq $before) 'Invalid version changed files'
     $packages=Join-Path $scratch 'packages';New-Packages $packages
     Test-ReleasePackages $packages $base $base 'stable' $sha
+    $prepared=Join-Path $scratch 'prepared'
+    & (Join-Path $root 'scripts/prepare-release.ps1') -InputDirectory $packages -OutputDirectory $prepared -PackageVersion $base -Channel stable -Commit $sha
+    $expectedNotes=Join-Path $root ("docs/releases/$base.md")
+    if(!(Test-Path -LiteralPath $expectedNotes -PathType Leaf)){$expectedNotes=Join-Path $root 'docs/RELEASE-NOTES.md'}
+    Assert ([IO.File]::ReadAllText((Join-Path $prepared 'RELEASE-NOTES.md')) -eq [IO.File]::ReadAllText($expectedNotes)) 'Prepared release lost version-specific notes'
     Reject {Test-ReleasePackages $packages $base $base 'stable' $other} 'Artifacts from another commit accepted'
     Write-Fixture $packages 'stale.zip';Reject {Get-ReleaseAssets $packages $base} 'Stale archive accepted';Remove-Item -LiteralPath (Join-Path $packages 'stale.zip')
     $bad=Join-Path $scratch 'bad';New-Packages $bad

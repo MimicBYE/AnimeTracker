@@ -1,6 +1,6 @@
 # Системные требования
 
-Обновлено: 26 октября 2026. Стабильное приложение 1.0, подготовка 1.0.1; Avalonia-порт 12.1.4 / .NET 10, Windows WPF / .NET Framework 4.8. План расширения — [PLATFORM-ROADMAP.md](PLATFORM-ROADMAP.md), [issue #2](https://github.com/MimicBYE/AnimeTracker/issues/2).
+Обновлено: 26 октября 2026. Приложение 1.0.1; Avalonia-порт 12.1.4 / .NET 10, Windows WPF / .NET Framework 4.8. План расширения — [PLATFORM-ROADMAP.md](PLATFORM-ROADMAP.md), [issue #2](https://github.com/MimicBYE/AnimeTracker/issues/2).
 
 ## Как читать требования
 
