@@ -65,6 +65,9 @@ jobs:
         run: ./tests/Release.Tests.ps1
       - name: Domain, import, migration and cover tests
         run: dotnet run --project tests/AnimeTracker.CoreTests -c Release
+      - name: Desktop search, persistence and virtualized viewport
+        if: runner.os != 'Linux'
+        run: dotnet run --project tests/AnimeTracker.DesktopTests -c Release
 
   windows:
     name: Windows package

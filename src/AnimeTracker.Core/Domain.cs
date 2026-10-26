@@ -34,6 +34,11 @@ public class Anime {
  public bool Rewatching;
  public int RewatchEpisode;
  public Anime Copy() { return (Anime)MemberwiseClone(); }
+ public void CopyFrom(Anime a) {
+  Id=a.Id; Title=a.Title; CatalogId=a.CatalogId; Genres=a.Genres; English=a.English; Japanese=a.Japanese; Romaji=a.Romaji; CoverUrl=a.CoverUrl;
+  Watched=a.Watched; Total=a.Total; Score=a.Score; Notes=a.Notes; EpisodesAired=a.EpisodesAired; AiringStatus=a.AiringStatus; EpisodesChecked=a.EpisodesChecked;
+  Status=a.Status; MalId=a.MalId; MalXml=a.MalXml; Rewatching=a.Rewatching; RewatchEpisode=a.RewatchEpisode; Updated=a.Updated;
+ }
  public void SetProgress(int watched,int total,string status) {
   if(watched<0 || total<0 || !MalImport.StatusKeys.Contains(status)) throw new ArgumentException("Некорректный прогресс или статус.");
   if(status=="completed" && total>0) watched=total;
@@ -53,16 +58,22 @@ public class Library {
   if (File.Exists(path)) File.Replace(temp, path, path + ".bak"); else File.Move(temp, path);
  }
  public static Library Load(string path) {
-  var lib = new Library(); if (!File.Exists(path)) return lib;
-  var root = XDocument.Load(path).Root;
+  var lib = new Library(); if(Directory.Exists(path)) throw new IOException("Вместо файла библиотеки обнаружена папка."); if (!File.Exists(path)) return lib;
+  XElement root;
+  var settings=new XmlReaderSettings { DtdProcessing=DtdProcessing.Prohibit, XmlResolver=null, MaxCharactersInDocument=128L*1024*1024 };
+  using(var reader=XmlReader.Create(path,settings)) root=XDocument.Load(reader).Root;
+  if(root==null || root.Name!="library" || root.Elements().Any(e=>e.Name!="anime") || root.Nodes().OfType<XText>().Any(t=>!String.IsNullOrWhiteSpace(t.Value))) throw new InvalidDataException("Ожидался корневой элемент library со списком anime.");
   lib.Left = (double?)root.Attribute("left") ?? -1; lib.Top = (double?)root.Attribute("top") ?? -1;
+  if(Double.IsNaN(lib.Left)||Double.IsInfinity(lib.Left)||Double.IsNaN(lib.Top)||Double.IsInfinity(lib.Top)) throw new InvalidDataException("Некорректные координаты виджета.");
+  var ids=new HashSet<string>(StringComparer.Ordinal);
   foreach (var e in root.Elements("anime")) {
+   if(e.Elements().Any(n=>n.Name!="notes") || e.Elements("notes").Count()>1 || e.Elements("notes").Any(n=>n.HasElements) || e.Nodes().OfType<XText>().Any(t=>!String.IsNullOrWhiteSpace(t.Value))) throw new InvalidDataException("Некорректная структура записи anime.");
    var a = new Anime { Id=(string)e.Attribute("id"), Title=(string)e.Attribute("title"), CatalogId=(int?)e.Attribute("catalogId") ?? 0, Genres=(string)e.Attribute("genres") ?? "", English=(string)e.Attribute("english") ?? "", Japanese=(string)e.Attribute("japanese") ?? "", Romaji=(string)e.Attribute("romaji") ?? "", CoverUrl=(string)e.Attribute("coverUrl") ?? "", Watched=(int)e.Attribute("watched"), Total=(int)e.Attribute("total"), Completed=(bool)e.Attribute("completed"), Updated=(DateTime)e.Attribute("updated") };
    a.AiringStatus=(string)e.Attribute("airingStatus") ?? ""; a.EpisodesAired=(int?)e.Attribute("episodesAired") ?? 0; a.EpisodesChecked=(DateTime?)e.Attribute("episodesChecked") ?? DateTime.MinValue;
    a.Status=(string)e.Attribute("status") ?? (a.Completed?"completed":"watching"); a.MalId=(int?)e.Attribute("malId") ?? 0; a.Rewatching=(bool?)e.Attribute("rewatching") ?? false; a.RewatchEpisode=(int?)e.Attribute("rewatchEpisode") ?? 0; a.MalXml=(string)e.Attribute("malXml") ?? "";
    a.Notes=(string)e.Element("notes") ?? "";
    a.Score=(int?)e.Attribute("score") ?? Ratings.FromMal(a.MalXml); if(a.Score<0 || a.Score>10) throw new InvalidDataException("Invalid score");
-   if (String.IsNullOrWhiteSpace(a.Title) || a.Watched < 0 || a.Total < 0) throw new InvalidDataException("Invalid anime data");
+   if (String.IsNullOrWhiteSpace(a.Id) || !ids.Add(a.Id) || String.IsNullOrWhiteSpace(a.Title) || a.Watched < 0 || a.Total < 0 || a.CatalogId<0 || a.MalId<0 || a.EpisodesAired<0 || a.RewatchEpisode<0 || !MalImport.StatusKeys.Contains(a.Status)) throw new InvalidDataException("Некорректные данные anime: проверьте уникальный id, название, числа и статус.");
    lib.Items.Add(a);
   } return lib;
  }

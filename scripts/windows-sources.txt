@@ -18,6 +18,8 @@ src/AnimeTracker.Core/ArcCatalog.cs
 src/AnimeTracker.Windows/WatchChoices.cs
 src/AnimeTracker.Windows/Version.cs
 src/AnimeTracker.Core/Domain.cs
+src/AnimeTracker.Core/LibraryStorage.cs
+src/AnimeTracker.Core/LibraryStorageTests.cs
 src/AnimeTracker.Core/Catalog.cs
 src/AnimeTracker.Core/JsonCodec.cs
 
