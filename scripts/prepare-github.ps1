@@ -51,6 +51,7 @@ try {
         $entryName = $entry.FullName.Replace('\','/')
         if (!$entryName.StartsWith($sourcePrefix,[StringComparison]::Ordinal)) { throw 'Unexpected source archive root.' }
         $relative = $entryName.Substring($sourcePrefix.Length)
+        if ($relative -eq 'BUILD-INFO.json') { continue } # Package provenance is not repository source.
         if ($relative -match '\.(exe|dll|pdb|zip|bak|tmp)$') { throw "Unexpected source binary: $relative" }
         $target = [IO.Path]::GetFullPath((Join-Path $repository $relative))
         if (!$target.StartsWith($repository+$separator,[StringComparison]::OrdinalIgnoreCase)) { throw 'Source path escaped repository.' }

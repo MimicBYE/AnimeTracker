@@ -121,6 +121,10 @@ Windows-сборка не имеет цифровой подписи. Для **A
 
 ## Сборка из исходников
 
+Порядок работы с issues и ветками — [CONTRIBUTING.md](CONTRIBUTING.md), правила для агентов — [AGENTS.md](AGENTS.md). [CI](docs/CI.md) проверяет общую логику на трёх ОС, собирает обе платформы и автоматически публикует стабильные релизы из `main` и промежуточные из `dev`. Уже выпущенные версии не перезаписываются.
+
+Требования безопасности и приватный канал сообщения об уязвимостях — [SECURITY.md](SECURITY.md). NuGet Audit, Dependency Review и Dependabot проверяют зависимости; High/Critical блокируют CI и публикацию.
+
 Для Windows используются C# 5, WPF и библиотеки установленного .NET Framework. Внешних NuGet-пакетов нет. Для приведённого скрипта нужна 64-битная Windows с .NET Framework 4.8+ и Windows PowerShell 5.1 или PowerShell 7.
 
 Из папки проекта:
@@ -145,7 +149,7 @@ Windows-сборка не имеет цифровой подписи. Для **A
 
 Готовые Windows-файлы находятся в `dist/windows/`. Подробности проверки конкретной сборки — в `artifacts/`.
 
-Порт macOS собирается SDK .NET 10: `sh scripts/build-macos.sh` на Mac или `./scripts/build-macos.ps1` в PowerShell. Подробности — [инструкция macOS](docs/MACOS.md). Общие проверки: `dotnet run --project tests/AnimeTracker.CoreTests`.
+Порт macOS собирается SDK .NET 10 из `global.json` и PowerShell 7: `sh scripts/build-macos.sh` на Mac или `./scripts/build-macos.ps1` в PowerShell. Подробности — [инструкция macOS](docs/MACOS.md). Общие проверки: `dotnet run --project tests/AnimeTracker.CoreTests`. Проверки релизной инфраструктуры: `./tests/Release.Tests.ps1`.
 
 Подготовка чистой папки для GitHub: `./scripts/prepare-github.ps1`. Подробности — [подготовка GitHub-релиза](docs/GITHUB-RELEASE.md).
 

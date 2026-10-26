@@ -1,8 +1,12 @@
 ﻿[CmdletBinding()]
-param([string]$Dotnet = 'dotnet')
+param([string]$Dotnet = 'dotnet',[string]$PackageVersion='',[ValidateSet('local','stable','dev')][string]$Channel='local',[string]$Commit='local')
 $ErrorActionPreference='Stop'
 $root=[IO.Path]::GetFullPath((Split-Path $PSScriptRoot -Parent))
-$version=(Get-Content -LiteralPath (Join-Path $root 'VERSION') -Raw).Trim()
+Import-Module (Join-Path $PSScriptRoot 'ReleaseTools.psm1') -Force
+Test-RepositoryVersion $root
+$version=Get-AppVersion $root
+if(!$PackageVersion){$PackageVersion=$version}
+$buildInfo=New-BuildInfo $version $PackageVersion $Channel $Commit
 $run=Join-Path $root ('artifacts/macos/'+[Guid]::NewGuid().ToString('N'))
 $publish=Join-Path $run 'publish'
 $bundle=Join-Path $run 'Anime Tracker.app'
@@ -17,18 +21,21 @@ Copy-Item -LiteralPath (Join-Path $root 'src/AnimeTracker.Desktop/Assets/app.icn
 Copy-Item -LiteralPath (Join-Path $root 'docs/licenses') -Destination (Join-Path $resources 'licenses') -Recurse
 foreach($notice in @('MACOS.md','THIRD-PARTY-NOTICES.md','ArcCatalog-SOURCES.txt')){Copy-Item -LiteralPath (Join-Path $root ('docs/'+$notice)) -Destination (Join-Path $resources $notice)}
 Copy-Item -LiteralPath (Join-Path $root 'src/AnimeTracker.Desktop/Assets/Info.plist') -Destination (Join-Path $bundle 'Contents/Info.plist')
+$buildJson=$buildInfo|ConvertTo-Json
+[IO.File]::WriteAllText((Join-Path $resources 'BUILD-INFO.json'),$buildJson,[Text.UTF8Encoding]::new($false))
+[IO.File]::WriteAllText((Join-Path $run 'BUILD-INFO.json'),$buildJson,[Text.UTF8Encoding]::new($false))
 $hostBytes=[IO.File]::ReadAllBytes((Join-Path $macos 'AnimeTracker'))
 if([BitConverter]::ToUInt32($hostBytes,0) -ne [Convert]::ToUInt32('feedfacf',16) -or [BitConverter]::ToUInt32($hostBytes,4) -ne 0x100000c){throw 'Expected an ARM64 Mach-O app host.'}
 # On macOS, apply a local ad-hoc signature; a public release requires Developer ID signing/notarization.
-if($IsMacOS){& chmod +x (Join-Path $macos 'AnimeTracker');& codesign --force --deep --sign - $bundle;if($LASTEXITCODE -ne 0){throw 'Local code signing failed.'}}
+if($IsMacOS){& chmod +x (Join-Path $macos 'AnimeTracker');if($LASTEXITCODE -ne 0){throw 'Could not set apphost permissions.'};& codesign --force --deep --sign - $bundle;if($LASTEXITCODE -ne 0){throw 'Local code signing failed.'};& codesign --verify --deep --strict $bundle;if($LASTEXITCODE -ne 0){throw 'Code signature verification failed.'}}
 Copy-Item -LiteralPath (Join-Path $root 'docs/MACOS.md') -Destination (Join-Path $run 'MACOS.md')
 Copy-Item -LiteralPath (Join-Path $root 'docs/THIRD-PARTY-NOTICES.md') -Destination (Join-Path $run 'THIRD-PARTY-NOTICES.md')
 Copy-Item -LiteralPath (Join-Path $root 'docs/ArcCatalog-SOURCES.txt') -Destination (Join-Path $run 'ArcCatalog-SOURCES.txt')
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-$archive=Join-Path $dist ('AnimeTracker-'+$version+'-macos-arm64.zip')
+$archive=Join-Path $dist ('AnimeTracker-'+$PackageVersion+'-macos-arm64.zip')
 $stream=[IO.File]::Create($archive);$zip=[IO.Compression.ZipArchive]::new($stream,[IO.Compression.ZipArchiveMode]::Create)
 try{
-    $files=@(Get-ChildItem -LiteralPath $bundle -File -Recurse)+@(Get-Item -LiteralPath (Join-Path $run 'MACOS.md'),(Join-Path $run 'THIRD-PARTY-NOTICES.md'),(Join-Path $run 'ArcCatalog-SOURCES.txt'))
+    $files=@(Get-ChildItem -LiteralPath $bundle -File -Recurse)+@(Get-Item -LiteralPath (Join-Path $run 'MACOS.md'),(Join-Path $run 'THIRD-PARTY-NOTICES.md'),(Join-Path $run 'ArcCatalog-SOURCES.txt'),(Join-Path $run 'BUILD-INFO.json'))
     foreach($file in $files){
         $name=$file.FullName.Substring($run.Length+1).Replace('\','/')
         $entry=$zip.CreateEntry($name,[IO.Compression.CompressionLevel]::Optimal)

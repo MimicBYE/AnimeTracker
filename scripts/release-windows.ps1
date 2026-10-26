@@ -1,14 +1,18 @@
 ﻿[CmdletBinding()]
-param()
+param([string]$PackageVersion='', [ValidateSet('local','stable','dev')][string]$Channel='local', [string]$Commit='local')
 $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath((Split-Path $PSScriptRoot -Parent))
-$version = (Get-Content -LiteralPath (Join-Path $root 'VERSION') -Raw).Trim()
-if ($version -notmatch '^\d+\.\d+(\.\d+)?$') { throw 'VERSION must contain a release version, such as 1.0 or 1.0.0.' }
-$assemblyVersion = if (($version -split '\.').Count -eq 2) { $version + '.0.0' } else { $version + '.0' }
-$run = Join-Path $root ('artifacts\release\' + $version + '\' + [Guid]::NewGuid().ToString('N'))
+Import-Module (Join-Path $PSScriptRoot 'ReleaseTools.psm1') -Force
+Test-RepositoryVersion $root
+$version = Get-AppVersion $root
+if (!$PackageVersion) { $PackageVersion=$version }
+$buildInfo=New-BuildInfo $version $PackageVersion $Channel $Commit
+$assemblyVersion = Get-AssemblyVersion $version
+# Keep extracted self-test paths below the legacy .NET Framework path limit.
+$run = Join-Path $root ('artifacts\release\' + [Guid]::NewGuid().ToString('N').Substring(0,12))
 $dist = Join-Path $root 'dist/windows'
-$binaryName = 'AnimeTracker-' + $version + '-windows-x64'
-$sourceName = 'AnimeTracker-' + $version + '-source'
+$binaryName = 'AnimeTracker-' + $PackageVersion + '-windows-x64'
+$sourceName = 'AnimeTracker-' + $PackageVersion + '-source'
 $binary = Join-Path $run $binaryName
 $source = Join-Path $run $sourceName
 foreach ($directory in @($binary,$source,$dist)) { New-Item -ItemType Directory -Path $directory -Force | Out-Null }
@@ -42,15 +46,18 @@ if ($fileVersion.FileVersion -ne $assemblyVersion -or $fileVersion.ProductVersio
 [xml]$manifest = Get-Content -LiteralPath (Join-Path $root 'src/AnimeTracker.Windows/Assets/app.manifest') -Raw
 if ($manifest.assembly.assemblyIdentity.version -ne $assemblyVersion) { throw 'Manifest version does not match VERSION.' }
 
-$documentation = @('README.md','docs/QUICKSTART.txt','docs/RELEASE-NOTES.md','docs/THIRD-PARTY-NOTICES.md','docs/ArcCatalog-SOURCES.txt','docs/MACOS.md','VERSION')
+$documentation = @('README.md','VERSION','SECURITY.md','AGENTS.md','CONTRIBUTING.md') + @(Get-ChildItem -LiteralPath (Join-Path $root 'docs') -File -Recurse | Where-Object {$_.Extension -in @('.md','.txt')} | ForEach-Object {$_.FullName.Substring($root.Length+1).Replace('\','/')})
 foreach ($file in $documentation) { $target=Join-Path $binary $file;New-Item -ItemType Directory -Path ([IO.Path]::GetDirectoryName($target)) -Force|Out-Null;Copy-Item -LiteralPath (Join-Path $root $file) -Destination $target }
 $binaryFiles = @('AnimeTracker.exe','AnimeTracker.exe.config') + $documentation
-$sourceFiles = @('README.md','VERSION','NuGet.Config','AnimeTracker.exe.config','.gitignore','.gitattributes') + @(foreach($folder in @('src','scripts','docs','tests/AnimeTracker.CoreTests')) { Get-ChildItem -LiteralPath (Join-Path $root $folder) -File -Recurse | Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' -and $_.Extension -in @('.cs','.csproj','.xaml','.axaml','.xml','.ico','.icns','.manifest','.plist','.ps1','.sh','.txt','.md') } | ForEach-Object { $_.FullName.Substring($root.Length+1).Replace('\','/') } })
+$sourceFiles = @(Get-SourceFiles $root)
 foreach ($file in $sourceFiles) {
     $target = Join-Path $source $file
     New-Item -ItemType Directory -Path ([IO.Path]::GetDirectoryName($target)) -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $root $file) -Destination $target
 }
+$buildJson=$buildInfo|ConvertTo-Json
+foreach($folder in @($binary,$source)){[IO.File]::WriteAllText((Join-Path $folder 'BUILD-INFO.json'),$buildJson,[Text.UTF8Encoding]::new($false))}
+$binaryFiles+='BUILD-INFO.json';$sourceFiles+='BUILD-INFO.json'
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $binaryZip = Join-Path $dist ($binaryName + '.zip')
@@ -78,7 +85,7 @@ Invoke-Check $rebuilt '--self-test' 'test-result.txt'
 $checksums = foreach ($file in @($binaryZip,$sourceZip)) { $hash = Get-FileHash -LiteralPath $file -Algorithm SHA256; $hash.Hash.ToLowerInvariant() + '  ' + [IO.Path]::GetFileName($file) }
 $checksums | Set-Content -LiteralPath (Join-Path $dist 'SHA256SUMS.txt') -Encoding ascii
 Copy-Item -LiteralPath (Join-Path $root 'docs/RELEASE-NOTES.md') -Destination (Join-Path $dist 'RELEASE-NOTES.md') -Force
-$report = [ordered]@{ version=$version; platform='windows-x64'; cleanArchiveContents='PASS'; distributedSelfTest='PASS'; distributedImportTest='PASS'; sourceRebuild='PASS'; rebuiltSelfTest='PASS'; binaryFiles=$binaryFiles; sourceFiles=$sourceFiles }
+$report = [ordered]@{ version=$version; packageVersion=$PackageVersion; channel=$Channel; commit=$Commit; platform='windows-x64'; cleanArchiveContents='PASS'; distributedSelfTest='PASS'; distributedImportTest='PASS'; sourceRebuild='PASS'; rebuiltSelfTest='PASS'; binaryFiles=$binaryFiles; sourceFiles=$sourceFiles }
 $report | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $run 'verification.json') -Encoding utf8
 Write-Output ("Release ready: {0}" -f $dist)
 Write-Output ("Verification: {0}" -f (Join-Path $run 'verification.json'))

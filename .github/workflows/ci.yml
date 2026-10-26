@@ -1,0 +1,171 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev, 'AT-*']
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/AT-') }}
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+
+jobs:
+  plan:
+    name: Release plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      package-version: ${{ steps.context.outputs.package-version }}
+      channel: ${{ steps.context.outputs.channel }}
+      publish: ${{ steps.context.outputs.publish }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate versions and choose release channel
+        id: context
+        shell: pwsh
+        run: ./scripts/get-release-context.ps1
+
+  security:
+    name: Dependency audit
+    needs: plan
+    uses: ./.github/workflows/dependency-audit.yml
+    permissions:
+      contents: read
+
+  core:
+    name: Core (${{ matrix.os }})
+    needs: plan
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
+        with:
+          global-json-file: global.json
+      - name: Release infrastructure tests
+        shell: pwsh
+        run: ./tests/Release.Tests.ps1
+      - name: Domain, import, migration and cover tests
+        run: dotnet run --project tests/AnimeTracker.CoreTests -c Release
+
+  windows:
+    name: Windows package
+    needs: plan
+    runs-on: windows-latest
+    timeout-minutes: 15
+    env:
+      PACKAGE_VERSION: ${{ needs.plan.outputs.package-version }}
+      RELEASE_CHANNEL: ${{ needs.plan.outputs.channel }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build, test ZIPs and rebuild extracted source
+        shell: pwsh
+        run: ./scripts/release-windows.ps1 -PackageVersion $env:PACKAGE_VERSION -Channel $env:RELEASE_CHANNEL -Commit $env:GITHUB_SHA
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: release-${{ github.run_id }}-${{ github.run_attempt }}-windows
+          path: dist/windows/*.zip
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+
+  macos:
+    name: macOS package
+    needs: plan
+    runs-on: macos-15
+    timeout-minutes: 20
+    env:
+      PACKAGE_VERSION: ${{ needs.plan.outputs.package-version }}
+      RELEASE_CHANNEL: ${{ needs.plan.outputs.channel }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
+        with:
+          global-json-file: global.json
+      - name: Build ARM64 app, verify local signature and archive permissions
+        shell: pwsh
+        run: ./scripts/build-macos.ps1 -PackageVersion $env:PACKAGE_VERSION -Channel $env:RELEASE_CHANNEL -Commit $env:GITHUB_SHA
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: release-${{ github.run_id }}-${{ github.run_attempt }}-macos
+          path: dist/macos/*.zip
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+
+  verify:
+    name: Verify release bundle
+    needs: [plan, security, core, windows, macos]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PACKAGE_VERSION: ${{ needs.plan.outputs.package-version }}
+      RELEASE_CHANNEL: ${{ needs.plan.outputs.channel }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          pattern: release-${{ github.run_id }}-${{ github.run_attempt }}-*
+          path: artifacts/downloaded
+      - name: Verify both platforms and write shared checksums
+        shell: pwsh
+        run: ./scripts/prepare-release.ps1 -InputDirectory artifacts/downloaded -OutputDirectory dist/release -PackageVersion $env:PACKAGE_VERSION -Channel $env:RELEASE_CHANNEL -Commit $env:GITHUB_SHA
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: verified-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: dist/release/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: Publish release
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && needs.plan.outputs.publish == 'true'
+    needs: [plan, verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    concurrency:
+      group: release-publication
+      cancel-in-progress: false
+    env:
+      PACKAGE_VERSION: ${{ needs.plan.outputs.package-version }}
+      RELEASE_CHANNEL: ${{ needs.plan.outputs.channel }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: verified-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/release
+      - name: Upload a draft, verify digests, then publish
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/publish-release.ps1 -Directory artifacts/release -Repository $env:GITHUB_REPOSITORY -PackageVersion $env:PACKAGE_VERSION -Channel $env:RELEASE_CHANNEL -Commit $env:GITHUB_SHA
