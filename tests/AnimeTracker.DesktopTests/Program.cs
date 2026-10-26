@@ -6,6 +6,8 @@ using AnimeTracker.Desktop;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Threading;
+using Avalonia.Input;
+using Avalonia.VisualTree;
 
 internal static class Program {
  static T Field<T>(MainWindow window,string name)=>(T)typeof(MainWindow).GetField(name,BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(window)!;
@@ -33,6 +35,10 @@ internal static class Program {
     // The transparent native window exercises a finite viewport without covering the user's desktop.
     window.Opacity=0;window.ShowInTaskbar=false;window.ShowActivated=false;window.Show();Dispatcher.UIThread.RunJobs();window.UpdateLayout();
     int realized=list.GetRealizedContainers().Count();Check(realized>0&&realized<100,"Library list is not virtualized in a bounded viewport");
+    var viewer=list.GetVisualDescendants().OfType<ScrollViewer>().Single(v=>v.Name=="PART_ScrollViewer");
+    var wheel=new PointerWheelEventArgs(list,new Avalonia.Input.Pointer(1,PointerType.Mouse,true),window,new Point(50,50),0,new PointerPointProperties(),KeyModifiers.None,new Vector(0,-1));
+    list.RaiseEvent(wheel);Check(wheel.Handled&&viewer.Offset.Y==0,"Wheel lost its smooth-scroll handler");
+    PumpUntil(()=>viewer.Offset.Y>0);Check(viewer.Offset.Y<55,"Wheel jumped directly to the destination");PumpUntil(()=>Math.Abs(viewer.Offset.Y-55)<0.001);
     if(args.Length==2&&args[0]=="--screenshots") {Directory.CreateDirectory(args[1]);((Panel)window.Content!).Background=window.Background;using var bitmap=new Avalonia.Media.Imaging.RenderTargetBitmap(new PixelSize(1040,800),new Vector(96,96));bitmap.Render((Control)window.Content!);bitmap.Save(Path.Combine(args[1],"library-"+size+".png"),Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);}
     list.ScrollIntoView(size-1);Dispatcher.UIThread.RunJobs();window.UpdateLayout();Check(list.GetRealizedContainers().Count()<100,"Scrolling materialized the full library");
     search.Text="00001";Dispatcher.UIThread.RunJobs();window.FlushPendingFilters();Check(list.Items.Count==1&&((Anime)list.Items[0]!).Title=="Тайтл 00001","Search results incorrect");
@@ -41,7 +47,7 @@ internal static class Program {
     search.Text="Последний запрос"; // Close before queued TextChanged/debounce ticks.
     typeof(App).GetProperty("Quitting")!.SetValue(App.CurrentApp,true);window.Close();
     Check(ViewPreferences.Load(viewPath).Search=="Последний запрос","Fast close lost latest search");
-    results.Add(new{entries=size,initialControlConstructionMs=initial,inputHandlersMs=timings,immediateSaves,realizedContainers=realized,checks="debounce, single write, finite viewport/scroll, search/status, flush on close"});
+    results.Add(new{entries=size,initialControlConstructionMs=initial,inputHandlersMs=timings,immediateSaves,realizedContainers=realized,checks="debounce, single write, finite viewport/scroll, smooth wheel, search/status, flush on close"});
    }
    Console.WriteLine(JsonSerializer.Serialize(new{os=System.Runtime.InteropServices.RuntimeInformation.OSDescription,framework=Environment.Version.ToString(),mode="input timing on unshown Avalonia controls, then transparent native-window checks; synthetic data, no covers/network; not frame-time measurements",results},new JsonSerializerOptions{WriteIndented=true}));
    return 0;

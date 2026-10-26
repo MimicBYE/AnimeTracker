@@ -20,7 +20,7 @@ public sealed partial class MainWindow:Window
     readonly CancellationTokenSource lifetime=new();
     readonly TextBlock message=Paper.Text("",12,Paper.Muted);
     readonly TabControl tabs=new();
-    readonly ListBox libraryRows=new(){Classes={"library"},Background=Brushes.Transparent,BorderThickness=new Thickness(0)};
+    readonly PaperListBox libraryRows=new(){Classes={"library"},Background=Brushes.Transparent,BorderThickness=new Thickness(0)};
     readonly TextBlock librarySummary=Paper.Text("",12,Paper.Muted);
     readonly TextBlock libraryEmpty=Paper.Text("Пока ничего нет. Добавьте аниме, импортируйте XML или перенесите папку данных из Windows через настройки.",18);
     readonly DispatcherTimer searchTimer=new(){Interval=TimeSpan.FromMilliseconds(250)};
