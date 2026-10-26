@@ -3,7 +3,8 @@ param()
 $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath((Split-Path $PSScriptRoot -Parent))
 $version = (Get-Content -LiteralPath (Join-Path $root 'VERSION') -Raw).Trim()
-if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'VERSION must contain a stable semantic version, such as 1.0.0.' }
+if ($version -notmatch '^\d+\.\d+(\.\d+)?$') { throw 'VERSION must contain a release version, such as 1.0 or 1.0.0.' }
+$assemblyVersion = if (($version -split '\.').Count -eq 2) { $version + '.0.0' } else { $version + '.0' }
 $run = Join-Path $root ('artifacts\release\' + $version + '\' + [Guid]::NewGuid().ToString('N'))
 $dist = Join-Path $root 'dist/windows'
 $binaryName = 'AnimeTracker-' + $version + '-windows-x64'
@@ -37,9 +38,9 @@ function Assert-Zip([string]$Archive,[string]$Folder,[string[]]$Expected) {
 Write-Output "Building release $version"
 & (Join-Path $PSScriptRoot 'build-windows.ps1') -OutputPath (Join-Path $binary 'AnimeTracker.exe') -Platform x64
 $fileVersion = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $binary 'AnimeTracker.exe'))
-if ($fileVersion.FileVersion -ne ($version + '.0') -or $fileVersion.ProductVersion -ne $version) { throw 'Assembly version does not match VERSION.' }
+if ($fileVersion.FileVersion -ne $assemblyVersion -or $fileVersion.ProductVersion -ne $version) { throw 'Assembly version does not match VERSION.' }
 [xml]$manifest = Get-Content -LiteralPath (Join-Path $root 'src/AnimeTracker.Windows/Assets/app.manifest') -Raw
-if ($manifest.assembly.assemblyIdentity.version -ne ($version + '.0')) { throw 'Manifest version does not match VERSION.' }
+if ($manifest.assembly.assemblyIdentity.version -ne $assemblyVersion) { throw 'Manifest version does not match VERSION.' }
 
 $documentation = @('README.md','docs/QUICKSTART.txt','docs/RELEASE-NOTES.md','docs/THIRD-PARTY-NOTICES.md','docs/ArcCatalog-SOURCES.txt','docs/MACOS.md','VERSION')
 foreach ($file in $documentation) { $target=Join-Path $binary $file;New-Item -ItemType Directory -Path ([IO.Path]::GetDirectoryName($target)) -Force|Out-Null;Copy-Item -LiteralPath (Join-Path $root $file) -Destination $target }

@@ -2,7 +2,7 @@
 param([string]$Dotnet = 'dotnet')
 $ErrorActionPreference='Stop'
 $root=[IO.Path]::GetFullPath((Split-Path $PSScriptRoot -Parent))
-$version='1.1.0-alpha.1'
+$version=(Get-Content -LiteralPath (Join-Path $root 'VERSION') -Raw).Trim()
 $run=Join-Path $root ('artifacts/macos/'+[Guid]::NewGuid().ToString('N'))
 $publish=Join-Path $run 'publish'
 $bundle=Join-Path $run 'Anime Tracker.app'
@@ -57,6 +57,6 @@ try{
     if(@($verify.Entries|Where-Object {$_.FullName -match '(^|/)(data|covers|bin|obj|\.tools)(/|$)'}).Count){throw 'Unexpected private/build files in Mac archive.'}
 }finally{$verify.Dispose()}
 ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()+'  '+[IO.Path]::GetFileName($archive))|Set-Content -LiteralPath (Join-Path $dist 'SHA256SUMS.txt') -Encoding ascii
-Write-Output "Mac preview: $archive"
+Write-Output "Mac app: $archive"
 Write-Output "Bundle: $bundle"
 Write-Output 'PASS: self-contained osx-arm64, Info.plist, icon, ZIP executable permissions. Native macOS launch still requires a Mac.'

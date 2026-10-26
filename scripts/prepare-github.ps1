@@ -10,7 +10,7 @@ if ($output.TrimEnd('\','/') -eq $root -or $root.StartsWith($output.TrimEnd('\',
 $version = (Get-Content -LiteralPath (Join-Path $root 'VERSION') -Raw).Trim()
 [xml]$desktop = Get-Content -LiteralPath (Join-Path $root 'src/AnimeTracker.Desktop/AnimeTracker.Desktop.csproj') -Raw
 $macVersion = [string]$desktop.Project.PropertyGroup.Version
-if ($version -notmatch '^\d+\.\d+\.\d+$' -or $macVersion -notmatch '^\d+\.\d+\.\d+-alpha\.\d+$') { throw 'Unexpected release versions.' }
+if ($version -notmatch '^\d+\.\d+(\.\d+)?$' -or $macVersion -ne $version) { throw 'Windows and macOS must use the same release version.' }
 if (!$SkipWindowsBuild) { & (Join-Path $PSScriptRoot 'release-windows.ps1') }
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $windows = Join-Path $root 'dist/windows'
@@ -40,9 +40,8 @@ foreach ($name in $windowsNames) { $hashes[$name] = Verify-Archive $windows $nam
 foreach ($name in $macNames) { $hashes[$name] = Verify-Archive $mac $name }
 
 $repository = Join-Path $output 'repository'
-$windowsRelease = Join-Path $output ("releases/windows-v" + $version)
-$macRelease = Join-Path $output ("releases/macos-v" + $macVersion)
-foreach ($directory in @($repository,$windowsRelease,$macRelease)) { New-Item -ItemType Directory -Path $directory -Force | Out-Null }
+$releaseFolder = Join-Path $output ("releases/v" + $version)
+foreach ($directory in @($repository,$releaseFolder)) { New-Item -ItemType Directory -Path $directory -Force | Out-Null }
 # Extract the verified source archive with an additional path boundary check.
 $sourcePrefix = "AnimeTracker-$version-source/"
 $sourceZip = [IO.Compression.ZipFile]::OpenRead((Join-Path $windows $windowsNames[1]))
@@ -64,29 +63,24 @@ try {
 $utf8 = New-Object Text.UTF8Encoding($false)
 function Write-Utf8([string]$Path,[string]$Value) { [IO.File]::WriteAllText($Path,$Value,$utf8) }
 $allChecksums = @()
-foreach ($pair in @(@{Names=$windowsNames;Source=$windows;Target=$windowsRelease},@{Names=$macNames;Source=$mac;Target=$macRelease})) {
-    $checksums = @()
+$releaseChecksums = @()
+foreach ($pair in @(@{Names=$windowsNames;Source=$windows},@{Names=$macNames;Source=$mac})) {
     foreach ($name in $pair.Names) {
-        Copy-Item -LiteralPath (Join-Path $pair.Source $name) -Destination (Join-Path $pair.Target $name)
-        $checksums += $hashes[$name] + '  ' + $name
-        $allChecksums += $hashes[$name] + '  ' + ([IO.Path]::GetFileName($pair.Target)) + '/' + $name
+        Copy-Item -LiteralPath (Join-Path $pair.Source $name) -Destination (Join-Path $releaseFolder $name)
+        $releaseChecksums += $hashes[$name] + '  ' + $name
+        $allChecksums += $hashes[$name] + '  v' + $version + '/' + $name
     }
-    $checksums | Set-Content -LiteralPath (Join-Path $pair.Target 'SHA256SUMS.txt') -Encoding ascii
 }
+$releaseChecksums | Set-Content -LiteralPath (Join-Path $releaseFolder 'SHA256SUMS.txt') -Encoding ascii
 $allChecksums | Set-Content -LiteralPath (Join-Path $output 'releases/SHA256SUMS.txt') -Encoding ascii
 $changelog = Get-Content -LiteralPath (Join-Path $repository 'docs/RELEASE-NOTES.md') -Raw -Encoding UTF8
-$windowsNotes = ($changelog -split '(?m)^# Anime Tracker ',3)[1]
-$windowsNotes = '# Anime Tracker ' + $windowsNotes.Trim() + "`n`nWindows 10/11 x64 · .NET Framework 4.8+. Распакуйте весь Windows ZIP и запустите AnimeTracker.exe. При обновлении сохраните свою папку data. EXE не подписан. Контрольные суммы — SHA256SUMS.txt. Личных данных в архивах нет.`n"
-Write-Utf8 (Join-Path $windowsRelease 'RELEASE-NOTES.md') $windowsNotes
-$macNotes = "# Anime Tracker $macVersion · macOS · Pre-release`n`nApple Silicon · macOS 14+ · .NET включён. Распакуйте ZIP и переместите Anime Tracker.app в Applications.`n`nПредварительная сборка: запуск на настоящем Mac, Show Desktop/Spaces и автозапуск ещё требуют проверки. Нет Developer ID и нотарификации Apple; Gatekeeper может блокировать запуск. Инструкция по локальной сборке на Mac и переносу данных находится внутри архива в MACOS.md.`n`nКонтрольные суммы — SHA256SUMS.txt. Личных данных в архиве нет.`n"
-Write-Utf8 (Join-Path $macRelease 'RELEASE-NOTES.md') $macNotes
+Write-Utf8 (Join-Path $releaseFolder 'RELEASE-NOTES.md') $changelog
 $instructions = @"
 # Anime Tracker — папка для GitHub
 
 1. repository/ — исходники для репозитория. Загружайте содержимое этой папки, включая .gitignore и .gitattributes.
-2. releases/windows-v$version/ — вложения стабильного релиза Windows v$version. Текст описания — RELEASE-NOTES.md.
-3. releases/macos-v$macVersion/ — вложения отдельного предварительного Mac-релиза v$macVersion. Сохраните отметку Pre-release; описание — RELEASE-NOTES.md.
-4. SHA256SUMS.txt содержит контрольные суммы соответствующих ZIP-файлов. Общий список — releases/SHA256SUMS.txt.
+2. releases/v$version/ — вложения единого релиза v${version}: Windows ZIP, macOS ZIP и архив исходников. Текст описания — RELEASE-NOTES.md.
+3. SHA256SUMS.txt содержит контрольные суммы всех трёх ZIP-файлов. Общий список с относительными путями — releases/SHA256SUMS.txt.
 
 В исходный репозиторий входит только repository/; готовые ZIP предназначены для вложений Releases.
 
@@ -112,7 +106,7 @@ foreach ($file in $files | Where-Object { $_.Extension -eq '.md' }) {
         if (!(Test-Path -LiteralPath $target)) { throw ('Broken documentation link: ' + $link + ' in ' + $file.Name) }
     }
 }
-$report = [ordered]@{ windowsVersion=$version; macVersion=$macVersion; sourceFileCount=$files.Count; archiveReadability='PASS'; sha256='PASS'; privateDataExcluded='PASS'; generatedFilesExcluded='PASS'; secretAndLocalPathPatternScan='PASS'; localMarkdownLinks='PASS'; ownSourceLicense='not assigned'; macNativeLaunch='not tested'; macReleaseKind='pre-release'; published=$false }
+$report = [ordered]@{ version=$version; windowsVersion=$version; macVersion=$macVersion; sourceFileCount=$files.Count; archiveReadability='PASS'; sha256='PASS'; privateDataExcluded='PASS'; generatedFilesExcluded='PASS'; secretAndLocalPathPatternScan='PASS'; localMarkdownLinks='PASS'; ownSourceLicense='not assigned'; macNativeLaunch='not tested'; releaseKind='release'; published=$false }
 Write-Utf8 (Join-Path $output 'verification.json') ($report | ConvertTo-Json -Depth 4)
 Write-Output "GitHub directory ready: $output"
 Write-Output ("PASS: {0} source files, 3 archives, checksums, documentation links, no private/build data." -f $files.Count)

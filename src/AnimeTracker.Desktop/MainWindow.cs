@@ -109,6 +109,6 @@ public sealed partial class MainWindow:Window
         panel.Children.Add(Paper.Actions(Paper.Button("Открыть папку данных",()=>MacIntegration.OpenFolder(store.Root)),Paper.AsyncButton("Перенести папку из Windows",async()=>{
             var directories=await dialog.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions{Title="Выберите папку data из Windows",AllowMultiple=false});var source=directories.FirstOrDefault()?.TryGetLocalPath();if(source==null)return;var imported=AnimeTracker.Library.Load(Path.Combine(source,"library.xml"));if(!File.Exists(Path.Combine(source,"library.xml")))throw new IOException("В папке нет library.xml.");if(await Paper.Message(dialog,"Будет перенесено аниме: "+imported.Items.Count+". Текущая папка данных будет сохранена отдельной резервной копией.","Перенос данных",true)){var backup=store.ImportWindowsFolder(source);await Paper.Message(dialog,"Готово. Предыдущие данные: "+backup);}
         }),Paper.AsyncButton("Резервная копия ZIP",async()=>{var target=await Paper.SaveFile(dialog,"Сохранить резервную копию","AnimeTracker-backup.zip","zip");if(target!=null){store.ExportBackup(target);await Paper.Message(dialog,"Резервная копия сохранена.");}})));
-        panel.Children.Add(Paper.Text("macOS 14+ · Apple Silicon · предварительная версия 1.1.0-alpha.1",11,Paper.Muted));await Modal(dialog);
+        panel.Children.Add(Paper.Text("Anime Tracker · 1.0",11,Paper.Muted));await Modal(dialog);
     }
 }

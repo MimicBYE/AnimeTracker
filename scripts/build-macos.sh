@@ -1,6 +1,7 @@
 #!/bin/sh
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+VERSION=$(tr -d '\r\n' < "$ROOT/VERSION")
 STAGE="$ROOT/artifacts/macos/local-$(date +%Y%m%d-%H%M%S)"
 APP="$STAGE/Anime Tracker.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$ROOT/dist/macos"
@@ -13,5 +14,5 @@ chmod +x "$APP/Contents/MacOS/AnimeTracker"
 codesign --force --deep --sign - "$APP"
 codesign --verify --deep --strict "$APP"
 cp "$ROOT/docs/MACOS.md" "$ROOT/docs/THIRD-PARTY-NOTICES.md" "$ROOT/docs/ArcCatalog-SOURCES.txt" "$STAGE/"
-ditto -c -k --keepParent "$APP" "$ROOT/dist/macos/AnimeTracker-1.1.0-alpha.1-macos-arm64-local.zip"
+ditto -c -k --keepParent "$APP" "$ROOT/dist/macos/AnimeTracker-$VERSION-macos-arm64-local.zip"
 printf 'Built: %s\n' "$APP"
