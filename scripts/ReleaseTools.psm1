@@ -70,7 +70,8 @@ function Get-SourceFiles {
         if (!(Test-Path -LiteralPath $path)) { continue }
         foreach ($file in Get-ChildItem -LiteralPath $path -File -Recurse -Force) {
             $relative = $file.FullName.Substring($rootPath.Length+1).Replace('\','/')
-            if ($relative -notmatch $blocked -and $file.Extension -in $extensions -and ($file.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) { $names += $relative }
+            $releaseMedia = $relative.StartsWith('docs/media/',[StringComparison]::Ordinal) -and $file.Extension -in @('.png','.mp4')
+            if ($relative -notmatch $blocked -and ($file.Extension -in $extensions -or $releaseMedia) -and ($file.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) { $names += $relative }
         }
     }
     return @($names | Where-Object { Test-Path -LiteralPath (Join-Path $rootPath $_) -PathType Leaf } | Sort-Object -Unique)

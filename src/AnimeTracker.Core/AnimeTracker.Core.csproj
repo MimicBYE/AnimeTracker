@@ -1,6 +1,6 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
  <PropertyGroup>
-  <TargetFramework>net10.0</TargetFramework><Version>1.0</Version><ImplicitUsings>disable</ImplicitUsings><Nullable>disable</Nullable>
+  <TargetFramework>net10.0</TargetFramework><Version>1.0.1</Version><ImplicitUsings>disable</ImplicitUsings><Nullable>disable</Nullable>
   <DefineConstants>$(DefineConstants);MODERN_DOTNET</DefineConstants><AssemblyName>AnimeTracker.Core</AssemblyName>
  </PropertyGroup>
  <ItemGroup>
