@@ -12,6 +12,9 @@
   <Style Selector="TextBox"><Setter Property="Background" Value="#FFF8DF"/><Setter Property="Foreground" Value="#47361D"/><Setter Property="BorderBrush" Value="#D6C18B"/><Setter Property="CornerRadius" Value="5"/><Setter Property="Padding" Value="9,7"/></Style>
   <Style Selector="ComboBox"><Setter Property="Background" Value="#FFF8DF"/><Setter Property="Foreground" Value="#47361D"/><Setter Property="BorderBrush" Value="#D6C18B"/><Setter Property="CornerRadius" Value="5"/><Setter Property="Padding" Value="9,7"/></Style>
   <Style Selector="ComboBoxItem"><Setter Property="Foreground" Value="#47361D"/></Style>
+  <Style Selector="ListBox.library ListBoxItem"><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0,2"/></Style>
+  <Style Selector="ListBox.library ListBoxItem:selected /template/ ContentPresenter"><Setter Property="Background" Value="#E8CF79"/></Style>
+  <Style Selector="ListBox.library ListBoxItem:pointerover /template/ ContentPresenter"><Setter Property="Background" Value="#EFDA8D"/></Style>
   <Style Selector="TabControl"><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Padding" Value="0"/></Style>
   <Style Selector="TabControl /template/ ItemsPresenter#PART_ItemsPresenter"><Setter Property="Margin" Value="0,0,44,0"/></Style>
   <Style Selector="TabItem">

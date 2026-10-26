@@ -44,7 +44,7 @@ public sealed partial class App : Application
             refresh = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
             refresh.Tick += async (_,_) => { refresh.Interval = TimeSpan.FromMinutes(15); if(updating)return;updating=true;try{await Store.RefreshEpisodes(false,lifetime.Token);}catch(OperationCanceledException){}catch(Exception e){LibraryWindow.SetMessage("Обновление каталога недоступно: "+e.Message);}finally{updating=false;} };
             refresh.Start();
-            desktop.Exit += (_,_) => { refresh.Stop();lifetime.Cancel();tray?.Dispose(); };
+            desktop.Exit += (_,_) => { LibraryWindow.FlushPendingFilters();refresh.Stop();lifetime.Cancel();tray?.Dispose(); };
         }
         base.OnFrameworkInitializationCompleted();
     }
@@ -65,5 +65,5 @@ public sealed partial class App : Application
         tray.Clicked += (_,_) => OpenLibrary();TrayIcon.SetIcons(this,new TrayIcons { tray });
     }
     public void OpenLibrary(){LibraryWindow.Show();LibraryWindow.WindowState=WindowState.Normal;LibraryWindow.Activate();}
-    public void Quit(){Quitting=true;lifetime.Cancel();if(ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)desktop.Shutdown();}
+    public void Quit(){LibraryWindow.FlushPendingFilters();Quitting=true;lifetime.Cancel();if(ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)desktop.Shutdown();}
 }

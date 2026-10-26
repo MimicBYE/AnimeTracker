@@ -31,7 +31,7 @@ public sealed class AppStore
     public void Reload()
     {
         Directory.CreateDirectory(Root); Error = ""; ReadOnly = ChoicesBlocked = ArcsBlocked = false;
-        try { Library = AnimeTracker.Library.Load(LibraryPath); } catch (Exception e) { Library = new(); ReadOnly = true; Error = "Не удалось прочитать библиотеку. Запись отключена. " + e.Message; }
+        var opened=LibraryStorage.Open(LibraryPath); Library=opened.Library; ReadOnly=opened.ReadOnly; Error=opened.Message;
         try { Choices = WatchChoices.Load(FilePath("watch-choices.xml")); } catch (Exception e) { Choices = new(); ChoicesBlocked = true; Error += " " + e.Message; }
         try { Arcs = ArcData.Load(FilePath("arcs.xml")); } catch (Exception e) { Arcs = new(); ArcsBlocked = true; Error += " Не удалось прочитать арки: " + e.Message; }
         View = ViewPreferences.Load(FilePath("view-settings.xml")); Widget = WidgetOptions.Load(FilePath("widget-settings.xml"));
@@ -54,7 +54,7 @@ public sealed class AppStore
     }
     public void Increment(Anime anime)
     {
-        Writable(); var next = anime.Copy(); next.Increment(); new Library { Left = Library.Left, Top = Library.Top, Items = Library.Items.Select(a => a == anime ? next : a).ToList() }.Save(LibraryPath); anime.Watched = next.Watched; anime.Status = next.Status; anime.Updated = next.Updated; Notify();
+        Writable(); if(LibraryStorage.Increment(Library,anime,LibraryPath))Notify();
     }
     public void Update(Anime anime, string title, int watched, int total, string status, int score, string notes) { Writable(); CardEdits.Save(Library, anime, title, watched, total, status, score, notes, LibraryPath); Notify(); }
     public void Status(Anime anime, string status) { Writable(); Ratings.UpdatePersonal(Library, anime, status, null, LibraryPath); Notify(); }
