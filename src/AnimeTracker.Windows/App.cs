@@ -43,7 +43,7 @@ public partial class Tracker : Application {
  System.Windows.Threading.DispatcherTimer clickTimer, desktopTimer;
  static System.Threading.Mutex mutex;
  static Brush Ink = new SolidColorBrush(Color.FromRgb(71,54,29));
- static Brush Muted = new SolidColorBrush(Color.FromRgb(137,111,62));
+ static Brush Muted = new SolidColorBrush(Color.FromRgb(114,89,50));
  static Brush Accent = new SolidColorBrush(Color.FromRgb(185,134,44));
  [DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr hwnd,int attribute,ref int value,int size);
  void StyleWindow(Window window) {
@@ -121,6 +121,8 @@ public partial class Tracker : Application {
  }
  TextBlock Text(string text, double size, Brush brush) { return new TextBlock { Text=text, FontSize=size, Foreground=brush, TextWrapping=TextWrapping.Wrap }; }
  Button Btn(string text, Action action) { var b = new Button { Content=text }; b.Click += delegate { action(); }; return b; }
+ Button Primary(Button button) { button.Background=new SolidColorBrush(Color.FromRgb(221,180,74));button.Foreground=Ink;button.FontWeight=FontWeights.SemiBold;return button; }
+ Button Quiet(Button button) { button.Background=Brushes.Transparent;button.Foreground=Muted;return button; }
  void Persist() { if (storageBlocked) return; try { library.Save(dataPath); } catch (Exception ex) { MessageBox.Show("Не удалось сохранить изменения:\n" + ex.Message,"Ошибка сохранения"); } }
  void BuildWidget() {
   StopWidgetAnimation();
@@ -253,9 +255,8 @@ public partial class Tracker : Application {
   tabs.Items.Add(new TabItem { Header="Библиотека",Content=panel }); tabs.Items.Add(BuildEveningTab(full)); tabs.Items.Add(BuildCalendarTab(full)); tabs.Items.Add(BuildSequelsTab(full)); tabs.Items.Add(BuildTopTab(false,full)); tabs.Items.Add(BuildTopTab(true,full)); settingsTab=BuildSettingsTab(full);tabs.Items.Add(settingsTab);full.Content=tabs; AnimateTabs(tabs);
   var head=new StackPanel(); head.Children.Add(Text("МОЯ КОЛЛЕКЦИЯ",11,Accent)); head.Children.Add(Text("Библиотека аниме",30,Ink));
   var toolbar=new DockPanel { Margin=new Thickness(0,22,0,20) };
-  var add=Btn("＋ Добавить",delegate { Edit(null,full); }); DockPanel.SetDock(add,Dock.Right); toolbar.Children.Add(add);
+  var add=Primary(Btn("＋ Добавить",delegate { Edit(null,full); })); DockPanel.SetDock(add,Dock.Right); toolbar.Children.Add(add);
   var restore=Btn("Показать виджет",RestoreWidget); DockPanel.SetDock(restore,Dock.Right); toolbar.Children.Add(restore);
-  var importButton=Btn("Импорт XML",ImportMal); DockPanel.SetDock(importButton,Dock.Right); toolbar.Children.Add(importButton);
   filter=new ComboBox { Width=145, Margin=new Thickness(0,0,12,0), VerticalContentAlignment=VerticalAlignment.Center, ItemsSource=new [] { "Все аниме", "Смотрю", "Просмотрено", "В планах", "Отложено", "Брошено" }, SelectedIndex=Array.IndexOf(MalImport.StatusKeys,preferences.Status)+1 }; DockPanel.SetDock(filter,Dock.Right); toolbar.Children.Add(filter);
   search=new TextBox { Text=preferences.Search, ToolTip="Поиск по названию", Margin=new Thickness(0,0,12,0) }; toolbar.Children.Add(search); head.Children.Add(Text("Поиск по названию",12,Muted)); head.Children.Add(toolbar);
   var options=new DockPanel { Margin=new Thickness(0,0,0,16) };
@@ -289,22 +290,21 @@ public partial class Tracker : Application {
   genreFilter.ContextMenu=menu; menu.IsOpen=true;
  }
  Border Row(Anime a, bool compact) {
-  var border=new Border { Tag="row", Background=new SolidColorBrush(Color.FromArgb(compact?(byte)70:(byte)255,255,249,225)), BorderBrush=new SolidColorBrush(Color.FromArgb(80,190,159,87)), BorderThickness=new Thickness(0,0,0,1), CornerRadius=new CornerRadius(3), Padding=new Thickness(compact?7:12), Margin=new Thickness(0,0,0,8) };
+  var border=new Border { Tag="row", Background=new SolidColorBrush(Color.FromArgb(compact?(byte)70:(byte)255,255,249,225)), BorderBrush=new SolidColorBrush(Color.FromArgb(80,190,159,87)), BorderThickness=new Thickness(0,0,0,1), CornerRadius=new CornerRadius(3), Padding=new Thickness(compact?7:16), Margin=new Thickness(0,0,0,compact?8:12) };
   var dock=new DockPanel(); border.Child=dock;
   var buttons=new StackPanel { Orientation=Orientation.Horizontal, VerticalAlignment=VerticalAlignment.Center };
   var plus=Btn("+1",delegate { Increment(a); });
   plus.FontSize=18; plus.Foreground=Accent; plus.IsEnabled=!a.Completed; plus.ToolTip="Отметить следующую серию"; buttons.Children.Add(plus);
-  if (!compact) { buttons.Children.Add(Btn(a.Notes.Length>0?"Карточка •":"Карточка",delegate { Edit(a,full); })); }
+  if (!compact) { Primary(plus);plus.Foreground=Ink;buttons.Children.Add(Quiet(Btn(a.Notes.Length>0?"Карточка •":"Карточка",delegate { Edit(a,full); }))); }
   DockPanel.SetDock(buttons,Dock.Right); dock.Children.Add(buttons);
-  if(a.CatalogId>0) { var cover=new Image { Width=compact?32:48, Height=compact?46:70, Stretch=Stretch.UniformToFill, Margin=new Thickness(0,0,compact?7:12,0) }; DockPanel.SetDock(cover,Dock.Left); dock.Children.Add(cover); LoadCover(cover,a.CatalogId,a.CoverUrl,System.Threading.CancellationToken.None); }
+  if(a.CatalogId>0) { var cover=new Image { Width=compact?32:64, Height=compact?46:90, Stretch=Stretch.Uniform, Margin=new Thickness(0,0,compact?7:16,0) }; DockPanel.SetDock(cover,Dock.Left); dock.Children.Add(cover); LoadCover(cover,a.CatalogId,a.CoverUrl,System.Threading.CancellationToken.None); }
   var labels=new StackPanel { Margin=new Thickness(0,0,10,0), Cursor=Cursors.Hand }; labels.MouseLeftButtonUp += delegate(object s, MouseButtonEventArgs e) { Edit(a,compact?null:full); e.Handled=true; };
-  labels.Children.Add(Text(a.Title,compact?14:16,Ink));
-  if(!compact) { var names=String.Join(" · ",new[]{a.English,a.Japanese,a.Romaji}.Where(s=>!String.IsNullOrWhiteSpace(s) && s!=a.Title).Distinct()); if(names.Length>0) labels.Children.Add(Text(names,11,Muted)); }
-  if(!compact && a.Genres.Length>0) labels.Children.Add(Text(String.Join(" · ",LibraryView.Genres(a)),11,Muted));
-  labels.Children.Add(Text((MalImport.StatusLabel(a.Status)+" · ") + a.Watched + (a.Total>0?" / " + a.Total:" / ?") + " серий" + (a.AiringStatus=="ongoing"?" · вышло "+a.EpisodesAired:""),12,Muted));
-  if(!compact) labels.Children.Add(Text(a.Score>0?"★ Моя оценка: "+a.Score+" / 10":"☆ Без оценки",12,Muted));
+  labels.Children.Add(Text(a.Title,compact?14:18,Ink));
+  if(!compact) { var names=String.Join(" · ",new[]{a.English,a.Japanese,a.Romaji}.Where(s=>!String.IsNullOrWhiteSpace(s) && s!=a.Title).Distinct()); if(names.Length>0) {var alternative=Text(names,12,Muted);alternative.Margin=new Thickness(0,4,0,0);labels.Children.Add(alternative);} }
+  var progress=Text((MalImport.StatusLabel(a.Status)+" · ") + a.Watched + (a.Total>0?" / " + a.Total:" / ?") + " серий" + (a.AiringStatus=="ongoing"?" · вышло "+a.EpisodesAired:""),compact?12:13,compact?Muted:Ink);progress.Margin=new Thickness(0,compact?0:10,0,0);labels.Children.Add(progress);
   if(a.Rewatching) labels.Children.Add(Text("Пересмотр · серия "+a.RewatchEpisode,11,Muted));
-  if(a.Total>0) labels.Children.Add(new ProgressBar { Minimum=0, Maximum=a.Total, Value=a.Watched, Height=3, Margin=new Thickness(0,9,0,0), Foreground=Accent, Background=new SolidColorBrush(Color.FromRgb(232,213,157)), BorderThickness=new Thickness(0) });
+  if(a.Total>0) labels.Children.Add(new ProgressBar { Minimum=0, Maximum=a.Total, Value=a.Watched, Height=compact?3:4, Margin=new Thickness(0,8,0,compact?0:8), Foreground=Accent, Background=new SolidColorBrush(Color.FromRgb(232,213,157)), BorderThickness=new Thickness(0) });
+  if(!compact) {var details=new WrapPanel();var score=Text(a.Score>0?"★ "+a.Score+" / 10":"☆ Без оценки",12,Ink);score.Margin=new Thickness(0,0,16,4);details.Children.Add(score);if(a.Genres.Length>0)details.Children.Add(Text(String.Join(" · ",LibraryView.Genres(a)),12,Muted));labels.Children.Add(details);}
   dock.Children.Add(labels); return border;
  }
  void Refresh() {

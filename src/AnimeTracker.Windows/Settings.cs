@@ -42,7 +42,7 @@ public partial class Tracker {
    pin.ItemsSource=new[]{"Автоматически: последнее изменённое"}.Concat(pinnedItems.Select(a=>a.Title)).ToArray();pin.SelectedIndex=Array.FindIndex(pinnedItems,a=>a.Id==widgetOptions.Pinned)+1;
    try {startup.IsChecked=AutoStart.Enabled;startup.IsEnabled=true;message.Text="";}catch(Exception ex){startup.IsEnabled=false;message.Text="Не удалось прочитать автозапуск: "+ex.Message;}
   };
-  actions.Children.Add(Btn("Применить",delegate {
+  actions.Children.Add(Primary(Btn("Применить",delegate {
    string selected=pin.SelectedIndex<=0?"":pinnedItems[pin.SelectedIndex-1].Id;
    bool wasStartup=false,changedStartup=false;
    try {
@@ -50,17 +50,19 @@ public partial class Tracker {
     if(!SaveWidgetOptions(selected,Math.Max(0,style.SelectedIndex),enabled.IsChecked==true)){if(changedStartup)AutoStart.Set(wasStartup);return;}
     message.Text="Настройки сохранены";
    } catch(Exception ex){message.Text="Не удалось сохранить настройки: "+ex.Message;}
-  }));
+  })));
   actions.Children.Add(Btn("Сбросить изменения",delegate {reload();message.Text="Показаны сохранённые настройки";}));
   body.Children.Add(actions);body.Children.Add(message);
   var dataPanel=new StackPanel();dataPanel.Children.Add(Text("Данные и резервные копии",20,Ink));
   var dataActions=new WrapPanel {Margin=new Thickness(0,14,0,0)};
+  var import=Btn("Импорт XML из MyAnimeList",ImportMal);import.IsEnabled=!storageBlocked;dataActions.Children.Add(import);
   dataActions.Children.Add(Btn("Открыть папку данных",delegate {try{var path=Path.GetDirectoryName(dataPath);Directory.CreateDirectory(path);Process.Start(new ProcessStartInfo(path){UseShellExecute=true});}catch(Exception ex){MessageBox.Show(owner,"Не удалось открыть папку: "+ex.Message,"Anime Tracker");}}));
   dataActions.Children.Add(Btn("Резервная копия ZIP",delegate {
    var picker=new Microsoft.Win32.SaveFileDialog {Title="Сохранить резервную копию",Filter="ZIP архив|*.zip",DefaultExt=".zip",AddExtension=true,FileName="AnimeTracker-backup-"+DateTime.Now.ToString("yyyyMMdd-HHmm")+".zip"};
    if(picker.ShowDialog(owner)!=true)return;
    try {ExportSettingsBackup(Path.GetDirectoryName(dataPath),picker.FileName);message.Text="Резервная копия сохранена: "+picker.FileName;}catch(Exception ex){MessageBox.Show(owner,"Не удалось сохранить копию: "+ex.Message,"Anime Tracker");}
   }));
+  foreach(Button action in dataActions.Children)action.Margin=new Thickness(0,0,8,8);
   dataPanel.Children.Add(dataActions);body.Children.Add(SettingsCard(dataPanel));
   var version=Text("Anime Tracker · Windows · "+FileVersionInfo.GetVersionInfo(System.Reflection.Assembly.GetExecutingAssembly().Location).ProductVersion,11,Muted);version.Margin=new Thickness(0,5,0,10);body.Children.Add(version);
   tab.AddHandler(System.Windows.Controls.Primitives.Selector.SelectedEvent,new RoutedEventHandler(delegate(object sender,RoutedEventArgs e){if(e.OriginalSource==tab)reload();}));reload();return tab;

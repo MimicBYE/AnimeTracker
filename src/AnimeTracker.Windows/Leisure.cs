@@ -79,17 +79,18 @@ public partial class Tracker {
    if(budget>0&&details!=null&&details.Duration>0&&details.Kind!="movie") {int count=budget/details.Duration; if(details.Episodes>0) count=Math.Min(count,details.Episodes-watched); if(details.AiringStatus=="ongoing") count=Math.Min(count,Math.Max(0,details.EpisodesAired-watched)); text.Children.Add(Text("Серий за это время: "+count,13,Muted));}
    text.Children.Add(Text("Подходит под выбранные условия · ещё вариантов: "+(candidates.Length-1),12,Muted));
    var actions=new WrapPanel {Margin=new Thickness(0,18,0,0)}; text.Children.Add(actions);
+   var secondary=new WrapPanel {Margin=new Thickness(0,10,0,0)};text.Children.Add(secondary);
    bool inLibrary=library.Items.Contains(a);
-   if(!inLibrary) actions.Children.Add(Btn("＋ В планах",delegate {if(storageBlocked)return;try{var entry=topEntries.First(e=>e.Id==a.CatalogId);Ratings.AddPlanned(library,entry,dataPath);Refresh();info.Text="Добавлено в планы: "+a.Title;pick();}catch(Exception ex){info.Text=ex.Message;}}));
+   if(!inLibrary) actions.Children.Add(Primary(Btn("＋ В планы",delegate {if(storageBlocked)return;try{var entry=topEntries.First(e=>e.Id==a.CatalogId);Ratings.AddPlanned(library,entry,dataPath);Refresh();info.Text="Добавлено в планы: "+a.Title;pick();}catch(Exception ex){info.Text=ex.Message;}})));
    else {
-    actions.Children.Add(Btn(a.Status=="watching"?"Продолжить смотреть":"Начать смотреть",delegate {if(a.Status=="watching"){OpenAnimeCard(a,owner);pick();return;}if(storageBlocked)return;try{Ratings.UpdatePersonal(library,a,"watching",null,dataPath);Refresh();pick();}catch(Exception ex){info.Text=ex.Message;}}));
+    actions.Children.Add(Primary(Btn(a.Status=="watching"?"Продолжить смотреть":"Начать смотреть",delegate {if(a.Status=="watching"){OpenAnimeCard(a,owner);pick();return;}if(storageBlocked)return;try{Ratings.UpdatePersonal(library,a,"watching",null,dataPath);Refresh();pick();}catch(Exception ex){info.Text=ex.Message;}})));
     actions.Children.Add(Btn("Карточка",delegate {OpenAnimeCard(a,owner);pick();}));
    }
    var queueButton=Btn(inLibrary&&watchChoices.Queue.Contains(a.Id)?"Уже в очереди":"＋ В очередь",delegate{
     if(watchChoicesBlocked)return;try{var owned=a;if(!library.Items.Contains(owned)){if(storageBlocked)return;owned=Ratings.AddPlanned(library,topEntries.First(e=>e.Id==a.CatalogId),dataPath);Refresh();}ChangeWatchChoices(next=>next.Add(owned),owner);}catch(Exception ex){info.Text=ex.Message;}
-   });queueButton.IsEnabled=!watchChoicesBlocked&&!(inLibrary&&watchChoices.Queue.Contains(a.Id))&&(!storageBlocked||inLibrary);actions.Children.Add(queueButton);
-   var hide=Btn("Не предлагать",delegate{ChangeWatchChoices(next=>next.Hide(a,details),owner);});hide.IsEnabled=!watchChoicesBlocked;actions.Children.Add(hide);
-   actions.Children.Add(Btn("Другой вариант",delegate {excluded.Add(a.Id); pick();}));
+   });queueButton.IsEnabled=!watchChoicesBlocked&&!(inLibrary&&watchChoices.Queue.Contains(a.Id))&&(!storageBlocked||inLibrary);secondary.Children.Add(Quiet(queueButton));
+   var hide=Quiet(Btn("Не предлагать",delegate{ChangeWatchChoices(next=>next.Hide(a,details),owner);}));hide.IsEnabled=!watchChoicesBlocked;secondary.Children.Add(hide);
+   actions.Children.Add(Quiet(Btn("Другой вариант",delegate {excluded.Add(a.Id); pick();})));
    output.Children.Add(Btn("Вернуть пропущенные ("+excluded.Count+")",delegate {excluded.Clear(); pick();})); Reveal(sheet);
   };
   var reload=Btn("Обновить данные",delegate {}); reload.Margin=new Thickness(0,8,0,0); reload.HorizontalAlignment=HorizontalAlignment.Left; header.Children.Add(reload);

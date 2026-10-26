@@ -22,7 +22,7 @@ public sealed partial class MainWindow:Window
     readonly TabControl tabs=new();
     readonly PaperListBox libraryRows=new(){Classes={"library"},Background=Brushes.Transparent,BorderThickness=new Thickness(0)};
     readonly TextBlock librarySummary=Paper.Text("",12,Paper.Muted);
-    readonly TextBlock libraryEmpty=Paper.Text("Пока ничего нет. Добавьте аниме, импортируйте XML или перенесите папку данных из Windows через настройки.",18);
+    readonly TextBlock libraryEmpty=Paper.Text("Пока ничего нет. Добавьте аниме или откройте настройки для импорта XML и переноса данных.",18);
     readonly DispatcherTimer searchTimer=new(){Interval=TimeSpan.FromMilliseconds(250)};
     bool filtersDirty;
     readonly StackPanel queueBody=new();
@@ -63,9 +63,9 @@ public sealed partial class MainWindow:Window
         status=Paper.Choice(new[]{"Все аниме"}.Concat(MalImport.StatusLabels),Array.IndexOf(MalImport.StatusKeys,store.View.Status)+1,150);
         sort=Paper.Choice(LibraryView.SortLabels,store.View.Sort,235);
         genres=Paper.AsyncButton("Жанры",ChooseGenres);
-        var add=Paper.AsyncButton("＋ Добавить",AddAnime);var import=Paper.AsyncButton("Импорт XML",ImportMalDialog);
-        var toolbar=new Grid{ColumnDefinitions=new ColumnDefinitions("*,Auto,Auto,Auto,Auto"),ColumnSpacing=8,Margin=new Thickness(0,15,0,12)};
-        var controls=new Control[]{search,status,import,Paper.Button("Виджет",()=>store.SetWidget(store.Widget.Pinned,store.Widget.Style,true)),add};for(int i=0;i<controls.Length;i++){Grid.SetColumn(controls[i],i);toolbar.Children.Add(controls[i]);}
+        var add=Paper.Primary(Paper.AsyncButton("＋ Добавить",AddAnime));
+        var toolbar=new Grid{ColumnDefinitions=new ColumnDefinitions("*,Auto,Auto,Auto"),ColumnSpacing=8,Margin=new Thickness(0,15,0,12)};
+        var controls=new Control[]{search,status,Paper.Button("Виджет",()=>store.SetWidget(store.Widget.Pinned,store.Widget.Style,true)),add};for(int i=0;i<controls.Length;i++){Grid.SetColumn(controls[i],i);toolbar.Children.Add(controls[i]);}
         var header=Paper.Stack(Paper.Text("МОЯ КОЛЛЕКЦИЯ",11,Paper.Accent),Paper.Text("Библиотека аниме",30),toolbar,Paper.Actions(genres,sort));
         search.TextChanged+=(_,_)=>SaveFilters(false);status.SelectionChanged+=(_,_)=>SaveFilters(true);sort.SelectionChanged+=(_,_)=>SaveFilters(true);initializing=false;
         // A bounded viewport is essential: an outer ScrollViewer would disable virtualization.
@@ -86,10 +86,14 @@ public sealed partial class MainWindow:Window
     }
     Control AnimeRow(Anime anime,int position=0)
     {
-        var row=new DockPanel{LastChildFill=true};var actions=Paper.Actions(Paper.AsyncButton("+1",()=>Act(()=>store.Increment(anime))),Paper.AsyncButton("Карточка",()=>Edit(anime)));actions.VerticalAlignment=VerticalAlignment.Center;((Button)actions.Children[0]).IsEnabled=!store.ReadOnly&&!anime.Completed&&(anime.Total<=0||anime.Watched<anime.Total);DockPanel.SetDock(actions,Dock.Right);row.Children.Add(actions);
+        var row=new DockPanel{LastChildFill=true};var actions=Paper.Actions(Paper.Primary(Paper.AsyncButton("+1",()=>Act(()=>store.Increment(anime)))),Paper.Quiet(Paper.AsyncButton("Карточка",()=>Edit(anime))));actions.VerticalAlignment=VerticalAlignment.Center;((Button)actions.Children[0]).IsEnabled=!store.ReadOnly&&!anime.Completed&&(anime.Total<=0||anime.Watched<anime.Total);DockPanel.SetDock(actions,Dock.Right);row.Children.Add(actions);
         var cover=covers.Image(anime,lifetime.Token);cover.Margin=new Thickness(0,0,14,0);DockPanel.SetDock(cover,Dock.Left);row.Children.Add(cover);
-        var texts=Paper.Stack(Paper.Text((position>0?position+". ":"")+anime.Title,18),Paper.Text(string.Join(" · ",new[]{anime.English,anime.Japanese,anime.Romaji}.Where(s=>!string.IsNullOrEmpty(s)&&s!=anime.Title).Distinct()),11,Paper.Muted),Paper.Text(anime.Genres.Replace("|"," · "),11,Paper.Muted),Paper.Text(MalImport.StatusLabel(anime.Status)+" · "+anime.Watched+" / "+(anime.Total>0?anime.Total.ToString():"?")+" серий"+(anime.AiringStatus=="ongoing"?" · вышло "+anime.EpisodesAired:""),12,Paper.Muted),Paper.Text(anime.Score>0?"★ "+anime.Score+" / 10":"☆ Без оценки",12,Paper.Muted));
-        texts.Spacing=3;texts.PointerReleased+=async(_,e)=>{if(e.InitialPressMouseButton==MouseButton.Left)await Edit(anime);};row.Children.Add(texts);return Paper.Card(row);
+        var texts=new StackPanel{Spacing=5,Margin=new Thickness(0,0,14,0)};texts.Children.Add(Paper.Text((position>0?position+". ":"")+anime.Title,18));
+        var names=string.Join(" · ",new[]{anime.English,anime.Japanese,anime.Romaji}.Where(s=>!string.IsNullOrWhiteSpace(s)&&s!=anime.Title).Distinct());if(names.Length>0)texts.Children.Add(Paper.Text(names,12,Paper.Muted));
+        var progress=Paper.Text(MalImport.StatusLabel(anime.Status)+" · "+anime.Watched+" / "+(anime.Total>0?anime.Total.ToString():"?")+" серий"+(anime.AiringStatus=="ongoing"?" · вышло "+anime.EpisodesAired:""),13);progress.Margin=new Thickness(0,5,0,0);texts.Children.Add(progress);
+        if(anime.Total>0)texts.Children.Add(new ProgressBar{Minimum=0,Maximum=anime.Total,Value=anime.Watched,Height=4,Foreground=Paper.Accent,Background=Brush.Parse("#E8D59D"),Margin=new Thickness(0,2,0,3)});
+        var details=new WrapPanel();var score=Paper.Text(anime.Score>0?"★ "+anime.Score+" / 10":"☆ Без оценки",12);score.Margin=new Thickness(0,0,16,4);details.Children.Add(score);if(anime.Genres.Length>0)details.Children.Add(Paper.Text(anime.Genres.Replace("|"," · "),12,Paper.Muted));texts.Children.Add(details);
+        texts.PointerReleased+=async(_,e)=>{if(e.InitialPressMouseButton==MouseButton.Left)await Edit(anime);};row.Children.Add(texts);return Paper.Card(row);
     }
     async Task ChooseGenres()
     {
@@ -119,12 +123,15 @@ public sealed partial class MainWindow:Window
     public async Task Settings()
     {
         var enabled=new CheckBox{Content="Показывать виджет",IsChecked=store.Widget.Enabled};var style=Paper.Choice(new[]{"Бумага","Компактная полоска","Обложка с прогрессом"},store.Widget.Style,280);var startup=new CheckBox{Content="Запускать при входе в macOS",IsChecked=MacIntegration.AutoStartEnabled,IsEnabled=OperatingSystem.IsMacOS()};
-        var panel=Paper.Stack(Paper.Text("Настройки",28),enabled,Paper.Field("Виджет",style),startup,Paper.Text("Данные хранятся в папке пользователя. Для переноса с Windows выберите папку data.",12,Paper.Muted));var dialog=Paper.Dialog(this,"Настройки",panel,650,500);
-        panel.Children.Add(Paper.Actions(Paper.AsyncButton("Применить",()=>Act(()=>{store.SetWidget(store.Widget.Pinned,style.SelectedIndex,enabled.IsChecked==true);if(OperatingSystem.IsMacOS()&&startup.IsChecked!=MacIntegration.AutoStartEnabled)MacIntegration.SetAutoStart(startup.IsChecked==true);dialog.Close();})),Paper.Button("Закрыть",()=>dialog.Close())));
-        panel.Children.Add(Paper.Actions(Paper.Button("Открыть папку данных",()=>MacIntegration.OpenFolder(store.Root)),Paper.AsyncButton("Перенести папку из Windows",async()=>{
+        var panel=Paper.Stack(Paper.Text("Настройки",28),Paper.Card(Paper.Stack(Paper.Text("Виджет и запуск",20),enabled,Paper.Field("Оформление виджета",style),startup)));var layout=new DockPanel();var dialog=Paper.Dialog(this,"Настройки",layout,680,590);bool importRequested=false;
+        var footer=Paper.Actions(Paper.Primary(Paper.AsyncButton("Применить",()=>Act(()=>{store.SetWidget(store.Widget.Pinned,style.SelectedIndex,enabled.IsChecked==true);if(OperatingSystem.IsMacOS()&&startup.IsChecked!=MacIntegration.AutoStartEnabled)MacIntegration.SetAutoStart(startup.IsChecked==true);dialog.Close();}))),Paper.Button("Закрыть",()=>dialog.Close()));footer.Margin=new Thickness(0,14,0,0);DockPanel.SetDock(footer,Dock.Bottom);layout.Children.Add(footer);layout.Children.Add(Paper.Scroll(panel));
+        var import=Paper.Button("Импорт XML из MyAnimeList",()=>{importRequested=true;dialog.Close();});import.IsEnabled=!store.ReadOnly;
+        var data=Paper.Stack(Paper.Text("Данные и резервные копии",20),Paper.Text("Импортируйте список MyAnimeList или перенесите папку data с Windows. Перед заменой данных сохраняется резервная копия.",13,Paper.Muted),Paper.Actions(import));
+        data.Children.Add(Paper.Actions(Paper.Button("Открыть папку данных",()=>MacIntegration.OpenFolder(store.Root)),Paper.AsyncButton("Перенести папку из Windows",async()=>{
             var directories=await dialog.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions{Title="Выберите папку data из Windows",AllowMultiple=false});var source=directories.FirstOrDefault()?.TryGetLocalPath();if(source==null)return;var imported=AnimeTracker.Library.Load(Path.Combine(source,"library.xml"));if(!File.Exists(Path.Combine(source,"library.xml")))throw new IOException("В папке нет library.xml.");if(await Paper.Message(dialog,"Будет перенесено аниме: "+imported.Items.Count+". Текущая папка данных будет сохранена отдельной резервной копией.","Перенос данных",true)){var backup=store.ImportWindowsFolder(source);await Paper.Message(dialog,"Готово. Предыдущие данные: "+backup);}
         }),Paper.AsyncButton("Резервная копия ZIP",async()=>{var target=await Paper.SaveFile(dialog,"Сохранить резервную копию","AnimeTracker-backup.zip","zip");if(target!=null){store.ExportBackup(target);await Paper.Message(dialog,"Резервная копия сохранена.");}})));
+        panel.Children.Add(Paper.Card(data));
         var version=typeof(App).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion??typeof(App).Assembly.GetName().Version?.ToString(2)??"";
-        panel.Children.Add(Paper.Text("Anime Tracker · "+version,11,Paper.Muted));await Modal(dialog);
+        panel.Children.Add(Paper.Text("Anime Tracker · "+version,11,Paper.Muted));await Modal(dialog);if(importRequested)await ImportMalDialog();
     }
 }

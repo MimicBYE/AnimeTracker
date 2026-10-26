@@ -9,6 +9,10 @@
   <Style Selector="TextBlock"><Setter Property="Foreground" Value="#47361D"/></Style>
   <Style Selector="Button"><Setter Property="Background" Value="#EAD490"/><Setter Property="Foreground" Value="#47361D"/><Setter Property="CornerRadius" Value="6"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Padding" Value="11,8"/><Setter Property="Cursor" Value="Hand"/></Style>
   <Style Selector="Button:pointerover /template/ ContentPresenter"><Setter Property="Background" Value="#E3C977"/></Style>
+  <Style Selector="Button.primary"><Setter Property="Background" Value="#DDB44A"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
+  <Style Selector="Button.primary:pointerover /template/ ContentPresenter"><Setter Property="Background" Value="#CCA039"/><Setter Property="Foreground" Value="#47361D"/></Style>
+  <Style Selector="Button.primary:pressed /template/ ContentPresenter"><Setter Property="Background" Value="#BC902D"/><Setter Property="Foreground" Value="#47361D"/></Style>
+  <Style Selector="Button.quiet"><Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="#725932"/></Style>
   <Style Selector="TextBox"><Setter Property="Background" Value="#FFF8DF"/><Setter Property="Foreground" Value="#47361D"/><Setter Property="BorderBrush" Value="#D6C18B"/><Setter Property="CornerRadius" Value="5"/><Setter Property="Padding" Value="9,7"/></Style>
   <Style Selector="ComboBox"><Setter Property="Background" Value="#FFF8DF"/><Setter Property="Foreground" Value="#47361D"/><Setter Property="BorderBrush" Value="#D6C18B"/><Setter Property="CornerRadius" Value="5"/><Setter Property="Padding" Value="9,7"/></Style>
   <Style Selector="ComboBoxItem"><Setter Property="Foreground" Value="#47361D"/></Style>
