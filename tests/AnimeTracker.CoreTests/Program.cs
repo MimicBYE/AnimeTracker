@@ -9,6 +9,8 @@ try
     var library = new Library(); library.Items.Add(anime); var path = Path.Combine(root, "library.xml"); library.Save(path);
     var copy = Library.Load(path).Items.Single(); if (copy.Notes != anime.Notes || copy.Id != anime.Id || copy.MalId != 21 || copy.Score != 8 || copy.Watched != 4) throw new Exception("Cross-platform XML roundtrip");
     PortTests.Run(root);
+    LibraryStorageTests.Run(root);
+    Console.WriteLine("PASS: failed writes preserve live/disk state, undo retry, strict/legacy XML, validated backup recovery and read-only failures");
     await CoverTests.Run();
     Console.WriteLine("PASS: shared Windows/macOS domain, XML, MAL/GZIP, queue/hiding, arcs, recommendations, ratings, notes, calendar, metadata preservation");
     return 0;

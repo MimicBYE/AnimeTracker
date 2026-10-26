@@ -37,6 +37,24 @@ internal static class Paper
         var file=await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions{Title=title,SuggestedFileName=name,DefaultExtension=extension,ShowOverwritePrompt=true,FileTypeChoices=[new FilePickerFileType(extension.ToUpperInvariant()){Patterns=["*."+extension]}]});return file?.TryGetLocalPath();
     }
 }
+public sealed class PaperListBox:ListBox
+{
+    protected override Type StyleKeyOverride=>typeof(ListBox);
+    readonly DispatcherTimer timer=new(){Interval=TimeSpan.FromMilliseconds(16)};
+    ScrollViewer? scroll;
+    double target;
+    public PaperListBox(){
+        // Handle the wheel before the internal viewer consumes it. Keep its bounded viewport.
+        AddHandler(PointerWheelChangedEvent,(_,e)=>{
+            if(e.Handled||scroll==null)return;double max=Math.Max(0,scroll.Extent.Height-scroll.Viewport.Height);if(max<=0)return;
+            if(!timer.IsEnabled)target=scroll.Offset.Y;target=Math.Clamp(target-e.Delta.Y*55,0,max);e.Handled=true;timer.Start();
+        },Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        timer.Tick+=(_,_)=>{if(scroll==null){timer.Stop();return;}target=Math.Clamp(target,0,Math.Max(0,scroll.Extent.Height-scroll.Viewport.Height));double delta=target-scroll.Offset.Y;if(Math.Abs(delta)<0.5){scroll.Offset=new Vector(scroll.Offset.X,target);timer.Stop();}else scroll.Offset=new Vector(scroll.Offset.X,scroll.Offset.Y+delta*0.28);};
+        DetachedFromVisualTree+=(_,_)=>timer.Stop();
+    }
+    protected override void OnApplyTemplate(TemplateAppliedEventArgs e){timer.Stop();base.OnApplyTemplate(e);scroll=e.NameScope.Find<ScrollViewer>("PART_ScrollViewer");}
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change){base.OnPropertyChanged(change);if(change.Property==ItemsSourceProperty)timer.Stop();}
+}
 public sealed class PaperScroll:ScrollViewer
 {
     readonly DispatcherTimer timer=new(){Interval=TimeSpan.FromMilliseconds(16)};

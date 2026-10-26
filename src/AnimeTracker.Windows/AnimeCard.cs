@@ -72,7 +72,7 @@ public partial class Tracker {
   var cancel=Btn("Закрыть без сохранения",delegate { window.Close(); }); cancel.IsCancel=true; actions.Children.Add(cancel);
   QueueCardButton(anime,window,actions);
   actions.Children.Add(Btn("В виджет",delegate { SaveWidgetOptions(anime.Id,widgetOptions.Style); }));
-  actions.Children.Add(Btn("Удалить",delegate { if(storageBlocked) return; try { new Library { Left=library.Left,Top=library.Top,Items=library.Items.Where(a=>a!=anime).ToList() }.Save(dataPath); library.Items.Remove(anime); undo=delegate { library.Items.Add(anime); }; Refresh(); window.Close(); } catch(Exception ex) { error.Text=ex.Message; } }));
+  actions.Children.Add(Btn("Удалить",delegate { if(storageBlocked) return; try {int index=library.Items.IndexOf(anime);LibraryStorage.Remove(library,anime,dataPath);undo=delegate{LibraryStorage.Insert(library,anime,index,dataPath);};Refresh();window.Close();} catch(Exception ex) { error.Text=ex.Message; } }));
   window.Loaded+=async delegate { cardScroll.Focus(); cardScroll.ResetToTop(); Reveal(hero); Reveal(sheet,65); if(anime.CatalogId<=0) return;
    try { var entries=await Catalog.ByIds(new[]{anime.CatalogId},lifetime.Token,true); if(closed) return; var entry=entries.FirstOrDefault(); description.Text=entry==null||String.IsNullOrWhiteSpace(entry.Description)?"Описание в каталоге отсутствует.":entry.Description; Reveal(description); }
    catch(Exception) { if(!closed) description.Text="Описание сейчас недоступно. Личные данные можно редактировать без интернета."; }

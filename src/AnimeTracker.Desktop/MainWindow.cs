@@ -7,6 +7,8 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Platform.Storage;
 using Avalonia.Media;
+using Avalonia.Controls.Templates;
+using Avalonia.Threading;
 
 
 namespace AnimeTracker.Desktop;
@@ -18,7 +20,11 @@ public sealed partial class MainWindow:Window
     readonly CancellationTokenSource lifetime=new();
     readonly TextBlock message=Paper.Text("",12,Paper.Muted);
     readonly TabControl tabs=new();
-    readonly StackPanel libraryRows=new(){Spacing=2};
+    readonly PaperListBox libraryRows=new(){Classes={"library"},Background=Brushes.Transparent,BorderThickness=new Thickness(0)};
+    readonly TextBlock librarySummary=Paper.Text("",12,Paper.Muted);
+    readonly TextBlock libraryEmpty=Paper.Text("Пока ничего нет. Добавьте аниме, импортируйте XML или перенесите папку данных из Windows через настройки.",18);
+    readonly DispatcherTimer searchTimer=new(){Interval=TimeSpan.FromMilliseconds(250)};
+    bool filtersDirty;
     readonly StackPanel queueBody=new();
     readonly StackPanel personalRows=new();
     TextBox search=null!;
@@ -28,6 +34,8 @@ public sealed partial class MainWindow:Window
     public MainWindow(AppStore store)
     {
         this.store=store;covers=new Covers(store);Title="Anime Tracker · macOS";Width=1040;Height=800;MinWidth=850;MinHeight=520;WindowStartupLocation=WindowStartupLocation.CenterScreen;
+        libraryRows.ItemTemplate=new FuncDataTemplate<Anime>((anime,_)=>anime==null?null:AnimeRow(anime));
+        searchTimer.Tick+=(_,_)=>FlushPendingFilters();
         using(var icon=Avalonia.Platform.AssetLoader.Open(new Uri("avares://AnimeTracker/Assets/app.ico")))Icon=new WindowIcon(icon);
         var root=new Grid{RowDefinitions=new RowDefinitions("*,Auto"),Margin=new Thickness(12,7,12,0)};
         root.Children.Add(tabs);
@@ -36,8 +44,8 @@ public sealed partial class MainWindow:Window
         var bottom=new Border{Padding=new Thickness(14,4),Child=message};Grid.SetRow(bottom,1);root.Children.Add(bottom);Content=root;
         tabs.ItemsSource=new[]{LibraryTab(),EveningTab(),CalendarTab(),SequelsTab(),PersonalTab(),GlobalTopTab()};
         store.Changed+=RefreshCommon;RefreshCommon();
-        Closing+=(_,e)=>{if(!App.CurrentApp.Quitting){e.Cancel=true;Hide();}};
-        Closed+=(_,_)=>{store.Changed-=RefreshCommon;lifetime.Cancel();};
+        Closing+=(_,e)=>{FlushPendingFilters();if(!App.CurrentApp.Quitting){e.Cancel=true;Hide();}};
+        Closed+=(_,_)=>{searchTimer.Stop();store.Changed-=RefreshCommon;lifetime.Cancel();};
         KeyDown+=(_,e)=>{if((e.KeyModifiers.HasFlag(KeyModifiers.Meta)||e.KeyModifiers.HasFlag(KeyModifiers.Control))&&e.Key==Key.F){tabs.SelectedIndex=0;search.Focus();e.Handled=true;}};
     }
     public void SetMessage(string value)=>message.Text=value;
@@ -59,17 +67,22 @@ public sealed partial class MainWindow:Window
         var toolbar=new Grid{ColumnDefinitions=new ColumnDefinitions("*,Auto,Auto,Auto,Auto"),ColumnSpacing=8,Margin=new Thickness(0,15,0,12)};
         var controls=new Control[]{search,status,import,Paper.Button("Виджет",()=>store.SetWidget(store.Widget.Pinned,store.Widget.Style,true)),add};for(int i=0;i<controls.Length;i++){Grid.SetColumn(controls[i],i);toolbar.Children.Add(controls[i]);}
         var header=Paper.Stack(Paper.Text("МОЯ КОЛЛЕКЦИЯ",11,Paper.Accent),Paper.Text("Библиотека аниме",30),toolbar,Paper.Actions(genres,sort));
-        search.TextChanged+=(_,_)=>SaveFilters();status.SelectionChanged+=(_,_)=>SaveFilters();sort.SelectionChanged+=(_,_)=>SaveFilters();initializing=false;
-        return Tab("Библиотека",Pane(header,libraryRows));
+        search.TextChanged+=(_,_)=>SaveFilters(false);status.SelectionChanged+=(_,_)=>SaveFilters(true);sort.SelectionChanged+=(_,_)=>SaveFilters(true);initializing=false;
+        // A bounded viewport is essential: an outer ScrollViewer would disable virtualization.
+        var pane=new DockPanel{Margin=new Thickness(26,22)};DockPanel.SetDock(header,Dock.Top);pane.Children.Add(header);
+        DockPanel.SetDock(librarySummary,Dock.Top);pane.Children.Add(librarySummary);
+        DockPanel.SetDock(libraryEmpty,Dock.Top);pane.Children.Add(libraryEmpty);pane.Children.Add(libraryRows);
+        return Tab("Библиотека",pane);
     }
-    void SaveFilters(){if(initializing)return;store.View.Search=search.Text??"";store.View.Status=status.SelectedIndex<=0?"":MalImport.StatusKeys[status.SelectedIndex-1];store.View.Sort=Math.Max(0,sort.SelectedIndex);try{store.SaveView();RenderLibrary();}catch(Exception e){SetMessage(e.Message);}}
+    bool CaptureFilters(){if(search==null)return false;string query=search.Text??"",state=status.SelectedIndex<=0?"":MalImport.StatusKeys[status.SelectedIndex-1];int order=Math.Max(0,sort.SelectedIndex);if(store.View.Search==query&&store.View.Status==state&&store.View.Sort==order)return false;store.View.Search=query;store.View.Status=state;store.View.Sort=order;filtersDirty=true;return true;}
+    void SaveFilters(bool immediate){if(initializing||!CaptureFilters())return;searchTimer.Stop();if(immediate)FlushPendingFilters();else searchTimer.Start();}
+    public void FlushPendingFilters(){searchTimer.Stop();if(!initializing)CaptureFilters();if(!filtersDirty)return;try{store.SaveView();filtersDirty=false;}catch(Exception e){SetMessage("Не удалось сохранить фильтры: "+e.Message);}RenderLibrary();}
     void RenderLibrary()
     {
-        if(search==null)return;libraryRows.Children.Clear();genres.Content=store.View.Genres.Count==0?"Все жанры ▾":"Жанры: "+store.View.Genres.Count+(store.View.MatchAll?" · все ▾":" · любой ▾");
+        if(search==null)return;genres.Content=store.View.Genres.Count==0?"Все жанры ▾":"Жанры: "+store.View.Genres.Count+(store.View.MatchAll?" · все ▾":" · любой ▾");
         var items=LibraryView.Select(store.Library.Items,store.View.Search,store.View.Status,store.View.Genres,store.View.MatchAll,store.View.Sort);
-        libraryRows.Children.Add(Paper.Text(items.Count+" аниме · "+items.Sum(a=>a.Watched)+" просмотренных серий",12,Paper.Muted));
-        if(items.Count==0)libraryRows.Children.Add(Paper.Card(Paper.Text("Пока ничего нет. Добавьте аниме, импортируйте XML или перенесите папку данных из Windows через настройки.",18)));
-        foreach(var anime in items)libraryRows.Children.Add(AnimeRow(anime));
+        librarySummary.Text=items.Count+" аниме · "+items.Sum(a=>a.Watched)+" просмотренных серий";
+        libraryEmpty.IsVisible=items.Count==0;libraryRows.IsVisible=items.Count>0;libraryRows.ItemsSource=items;
     }
     Control AnimeRow(Anime anime,int position=0)
     {
@@ -80,6 +93,7 @@ public sealed partial class MainWindow:Window
     }
     async Task ChooseGenres()
     {
+        FlushPendingFilters();
         var checkboxes=new List<CheckBox>();var list=new StackPanel{Spacing=6};var all=new CheckBox{Content="Требовать все выбранные жанры",IsChecked=store.View.MatchAll};
         foreach(var name in new[]{"Без жанров"}.Concat(store.Library.Items.SelectMany(LibraryView.Genres).Concat(store.View.Genres).Where(g=>g!="Без жанров").Distinct().OrderBy(g=>g))){var check=new CheckBox{Content=name,IsChecked=store.View.Genres.Contains(name)};checkboxes.Add(check);list.Children.Add(check);}
         var panel=new DockPanel();var dialog=Paper.Dialog(this,"Жанры",panel,450,540);var actions=Paper.Actions(Paper.AsyncButton("Применить",()=>Act(()=>{store.View.Genres=checkboxes.Where(c=>c.IsChecked==true).Select(c=>(string)c.Content!).ToList();store.View.MatchAll=all.IsChecked==true;store.SaveView();dialog.Close();RenderLibrary();})),Paper.Button("Снять все",()=>{foreach(var check in checkboxes)check.IsChecked=false;}),Paper.Button("Отмена",()=>dialog.Close()));DockPanel.SetDock(actions,Dock.Bottom);panel.Children.Add(actions);DockPanel.SetDock(all,Dock.Top);panel.Children.Add(all);panel.Children.Add(Paper.Scroll(list));await Modal(dialog);

@@ -1,0 +1,31 @@
+{
+  "os": "Microsoft Windows 10.0.26200",
+  "framework": "10.0.14",
+  "mode": "unshown Avalonia controls, synthetic data, no covers/network; not frame-time or macOS measurements",
+  "results": [
+    {
+      "entries": 1000,
+      "initialControlConstructionMs": 420.1931,
+      "inputHandlersMs": [
+        261.6902,
+        128.7552,
+        114.1216,
+        134.654,
+        75.2545
+      ],
+      "immediateSaves": 5
+    },
+    {
+      "entries": 5000,
+      "initialControlConstructionMs": 437.762,
+      "inputHandlersMs": [
+        883.1729,
+        406.5516,
+        310.0018,
+        389.6009,
+        430.5188
+      ],
+      "immediateSaves": 5
+    }
+  ]
+}

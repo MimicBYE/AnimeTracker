@@ -80,10 +80,8 @@ public partial class Tracker : Application {
   <Style TargetType='Window'><Setter Property='FontFamily' Value='Segoe UI'/><Setter Property='Foreground' Value='#47361D'/><Setter Property='Background' Value='#F8EECC'/></Style>
   </ResourceDictionary>");
   using(var theme=System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("AnimeTracker.DropdownTheme")) Resources.MergedDictionaries.Add((ResourceDictionary)XamlReader.Load(theme));
-  try { library = Library.Load(dataPath); } catch (Exception ex) {
-   library = new Library(); storageBlocked = true;
-   MessageBox.Show("Не удалось прочитать библиотеку. Исходный файл сохранён; запись отключена.\n" + dataPath + "\n" + ex.Message,"Ошибка загрузки");
-  }
+  var opened=LibraryStorage.Open(dataPath);library=opened.Library;storageBlocked=opened.ReadOnly;
+  if(opened.Message.Length>0)MessageBox.Show(opened.Message,storageBlocked?"Ошибка загрузки":"Восстановление библиотеки");
   preferences=ViewPreferences.Load(viewPath); widgetOptions=WidgetOptions.Load(widgetOptionsPath);
   LoadWatchChoices();
   StartEpisodeUpdates();
@@ -150,7 +148,7 @@ public partial class Tracker : Application {
   var title=Text("Anime Tracker",20,Ink); title.FontFamily=new FontFamily("Georgia"); header.Children.Add(title); DockPanel.SetDock(header,Dock.Top); widgetExpanded.Children.Add(header);
   var bottom=new StackPanel { Margin=new Thickness(0,8,0,0) };
   var add=Btn("＋ Добавить аниме",delegate { Edit(null,null); }); add.Margin=new Thickness(0); bottom.Children.Add(add);
-  undoButton=Btn("↶ Отменить действие",delegate { if(undo!=null) { undo(); undo=null; Persist(); Refresh(); } }); undoButton.FontSize=11; undoButton.Margin=new Thickness(0,6,0,0); bottom.Children.Add(undoButton); DockPanel.SetDock(bottom,Dock.Bottom); widgetExpanded.Children.Add(bottom);
+  undoButton=Btn("↶ Отменить действие",delegate { if(undo!=null && !storageBlocked) { try {undo();undo=null;Refresh();}catch(Exception ex){MessageBox.Show("Не удалось отменить действие:\n"+ex.Message,"Ошибка сохранения");} } }); undoButton.FontSize=11; undoButton.Margin=new Thickness(0,6,0,0); bottom.Children.Add(undoButton); DockPanel.SetDock(bottom,Dock.Bottom); widgetExpanded.Children.Add(bottom);
   widgetRows=new StackPanel(); widgetExpanded.Children.Add(new SmoothScrollViewer { Content=widgetRows, VerticalScrollBarVisibility=ScrollBarVisibility.Auto, HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled });
   var area=SystemParameters.WorkArea;
   widget.Left=library.Left < 0 ? area.Right-widget.Width-28 : Math.Max(area.Left,Math.Min(library.Left,area.Right-widget.Width));
@@ -222,7 +220,11 @@ public partial class Tracker : Application {
   ClampPosition(); AttachDesktop(); Persist();
  }
  static Anime LatestAnime(Library source) { return source.Items.OrderByDescending(a=>a.Updated).FirstOrDefault(); }
- void Increment(Anime a) { int old=a.Watched; string oldStatus=a.Status; var date=a.Updated; a.Increment(); undo=delegate { a.Watched=old; a.Status=oldStatus; a.Updated=date; }; Persist(); Refresh(); if(a.Watched!=old) AnimateWidgetProgress(a); }
+ void Increment(Anime a) {
+  if(storageBlocked)return;
+  try {var before=a.Copy();if(!LibraryStorage.Increment(library,a,dataPath))return;undo=delegate{LibraryStorage.RestoreProgress(library,a,before,dataPath);};Refresh();AnimateWidgetProgress(a);}
+  catch(Exception ex){MessageBox.Show("Не удалось сохранить серию:\n"+ex.Message,"Ошибка сохранения");}
+ }
  bool IsButtonChild(DependencyObject obj) { while (obj!=null) { if (obj is System.Windows.Controls.Primitives.ButtonBase || obj is System.Windows.Controls.Primitives.ScrollBar) return true; obj=VisualTreeHelper.GetParent(obj); } return false; }
  void BuildTray() {
   tray=new Forms.NotifyIcon { Text="Anime Tracker", Icon=System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location), Visible=true };
@@ -408,12 +410,13 @@ public partial class Tracker : Application {
    if(title.Length==0) { error.Text="Введите название аниме."; return; }
    if(!Int32.TryParse(watched.Text,out w) || w<0 || (!String.IsNullOrWhiteSpace(total.Text) && (!Int32.TryParse(total.Text,out t) || t<1)) || (t>0 && w>t)) { error.Text="Проверьте числа: просмотрено от 0 до общего количества."; return; }
    if(library.Items.Any(item=>item!=existing && ((selected!=null && item.CatalogId==selected.Id) || String.Equals(item.Title,title,StringComparison.CurrentCultureIgnoreCase)))) { error.Text="Такое аниме уже есть. Для другого сезона выберите другую карточку."; return; }
-   var a=existing??new Anime(); a.Title=title; a.Score=Math.Max(0,rating.SelectedIndex); a.SetProgress(w,t,MalImport.StatusKeys[Math.Max(0,statusChoice.SelectedIndex)]); a.Updated=DateTime.UtcNow;
+   var a=existing==null?new Anime():existing.Copy(); a.Title=title; a.Score=Math.Max(0,rating.SelectedIndex); a.SetProgress(w,t,MalImport.StatusKeys[Math.Max(0,statusChoice.SelectedIndex)]); a.Updated=DateTime.UtcNow;
    if(selected!=null) { a.CatalogId=selected.Id; if(selected.AiringStatus!="") { a.AiringStatus=selected.AiringStatus; a.EpisodesAired=selected.EpisodesAired; a.EpisodesChecked=DateTime.UtcNow; } a.English=selected.English; a.Japanese=selected.Japanese; a.Romaji=selected.Romaji; a.CoverUrl=selected.CoverUrl; a.Genres=selected.Genres; if(selected.MalId>0) a.MalId=selected.MalId; }
-   if(existing==null) library.Items.Add(a); undo=null; Persist(); Refresh(); dialog.Close();
+   if(storageBlocked){error.Text="Запись библиотеки отключена.";return;}
+   try{LibraryStorage.SaveItem(library,existing,a,dataPath);undo=null;Refresh();dialog.Close();}catch(Exception ex){error.Text="Не удалось сохранить: "+ex.Message;}
   }); save.IsDefault=true; save.Background=Accent; save.Foreground=Brushes.Black; actions.Children.Add(save);
   var cancel=Btn("Отмена",delegate { dialog.Close(); }); cancel.IsCancel=true; actions.Children.Add(cancel);
-  if(existing!=null) actions.Children.Add(Btn("Удалить",delegate { library.Items.Remove(existing); undo=delegate { library.Items.Add(existing); }; Persist(); Refresh(); dialog.Close(); }));
+  if(existing!=null) actions.Children.Add(Btn("Удалить",delegate {if(storageBlocked)return;try{int index=library.Items.IndexOf(existing);LibraryStorage.Remove(library,existing,dataPath);undo=delegate{LibraryStorage.Insert(library,existing,index,dataPath);};Refresh();dialog.Close();}catch(Exception ex){error.Text="Не удалось удалить: "+ex.Message;} }));
   p.Children.Add(actions); dialog.Loaded += delegate { if(existing==null) query.Focus(); else { name.Focus(); name.SelectAll(); } }; dialog.ShowDialog();
  }
  async void LoadCover(Image target,int id,string url,System.Threading.CancellationToken token) { try { var bitmap=await Catalog.Cover(id,url,token); if(!token.IsCancellationRequested) target.Source=bitmap; } catch(OperationCanceledException) {} catch { target.ToolTip="Обложка недоступна"; } }
@@ -446,7 +449,7 @@ public partial class Tracker : Application {
    var widgetTest=new Library(); widgetTest.Items.Add(older); widgetTest.Items.Add(recent);
    if(LatestAnime(widgetTest)!=recent) throw new Exception("Widget must show latest user change regardless of status");
    older.Updated=recent.Updated.AddMinutes(1); if(LatestAnime(widgetTest)!=older) throw new Exception("Widget follows user edits");
-   ViewPreferences.Test(dir);SettingsBackupTest(dir);
+   ViewPreferences.Test(dir);SettingsBackupTest(dir);LibraryStorageTests.Run(dir);
    var completion=new Anime { Watched=3,Total=12 };
    completion.SetProgress(3,12,"completed"); if(completion.Watched!=12 || completion.Status!="completed") throw new Exception("Completed fills known total");
    completion.SetProgress(5,0,"completed"); if(completion.Watched!=5) throw new Exception("Unknown total preserves progress");

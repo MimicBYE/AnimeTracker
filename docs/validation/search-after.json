@@ -1,0 +1,35 @@
+{
+  "os": "Microsoft Windows 10.0.26200",
+  "framework": "10.0.14",
+  "mode": "input timing on unshown Avalonia controls, then transparent native-window checks; synthetic data, no covers/network; not frame-time measurements",
+  "results": [
+    {
+      "entries": 1000,
+      "initialControlConstructionMs": 219.2327,
+      "inputHandlersMs": [
+        6.6146,
+        0.3233,
+        0.018,
+        0.009,
+        0.007
+      ],
+      "immediateSaves": 0,
+      "realizedContainers": 4,
+      "checks": "debounce, single write, finite viewport/scroll, search/status, flush on close"
+    },
+    {
+      "entries": 5000,
+      "initialControlConstructionMs": 41.2905,
+      "inputHandlersMs": [
+        1.0829,
+        0.0562,
+        0.025,
+        0.0173,
+        0.0152
+      ],
+      "immediateSaves": 0,
+      "realizedContainers": 4,
+      "checks": "debounce, single write, finite viewport/scroll, search/status, flush on close"
+    }
+  ]
+}
