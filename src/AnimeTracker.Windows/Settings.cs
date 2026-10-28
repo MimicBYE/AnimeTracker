@@ -33,7 +33,7 @@ public partial class Tracker {
   var widgetHelp=Text("Отключённый виджет остаётся выключенным после перезапуска. Вернуть его можно кнопкой «Показать виджет» или из трея.",12,Muted);widgetHelp.Margin=new Thickness(0,12,0,0);widgetPanel.Children.Add(widgetHelp);
   body.Children.Add(SettingsCard(widgetPanel));
   var startup=new CheckBox {Content="Запускать вместе с Windows",Margin=new Thickness(0,12,0,0)};
-  var appPanel=new StackPanel();appPanel.Children.Add(Text("Приложение",20,Ink));appPanel.Children.Add(startup);body.Children.Add(SettingsCard(appPanel));
+  var appPanel=new StackPanel();appPanel.Children.Add(Text("Приложение",20,Ink));appPanel.Children.Add(startup);var startupHelp=Text("Запуск при входе в учётную запись Windows. Настройка применяется кнопкой «Применить».",12,Muted);startupHelp.Margin=new Thickness(0,8,0,0);appPanel.Children.Add(startupHelp);body.Children.Add(SettingsCard(appPanel));
   var message=Text("",12,Muted);var actions=new WrapPanel {Margin=new Thickness(0,0,0,8)};
   Anime[] pinnedItems=new Anime[0];
   Action reload=delegate {
@@ -46,7 +46,7 @@ public partial class Tracker {
    string selected=pin.SelectedIndex<=0?"":pinnedItems[pin.SelectedIndex-1].Id;
    bool wasStartup=false,changedStartup=false;
    try {
-    if(startup.IsEnabled){wasStartup=AutoStart.Enabled;changedStartup=wasStartup!=(startup.IsChecked==true);if(changedStartup)AutoStart.Set(startup.IsChecked==true);}
+    if(startup.IsEnabled){wasStartup=AutoStart.Enabled;changedStartup=wasStartup!=(startup.IsChecked==true);if(changedStartup || startup.IsChecked==true)AutoStart.Set(startup.IsChecked==true);}
     if(!SaveWidgetOptions(selected,Math.Max(0,style.SelectedIndex),enabled.IsChecked==true)){if(changedStartup)AutoStart.Set(wasStartup);return;}
     message.Text="Настройки сохранены";
    } catch(Exception ex){message.Text="Не удалось сохранить настройки: "+ex.Message;}
