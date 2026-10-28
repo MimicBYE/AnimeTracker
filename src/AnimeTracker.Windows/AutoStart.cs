@@ -7,7 +7,7 @@ using Microsoft.Win32;
 namespace AnimeTracker {
 public static class AutoStart {
  const string RunKey="Software\\Microsoft\\Windows\\CurrentVersion\\Run";
- static StartupRegistration Registration { get { return new StartupRegistration(Environment.GetFolderPath(Environment.SpecialFolder.Startup),Assembly.GetExecutingAssembly().Location,RunKey); } }
+ static StartupRegistration Registration { get { return new StartupRegistration(Environment.GetFolderPath(Environment.SpecialFolder.Startup,Environment.SpecialFolderOption.DoNotVerify),Assembly.GetExecutingAssembly().Location,RunKey); } }
  public static bool Enabled { get { return Registration.Enabled; } }
  public static void Set(bool enabled) { Registration.Set(enabled); }
 
@@ -52,7 +52,7 @@ public static class AutoStart {
   string folder=Path.Combine(root,"startup"),program=Path.Combine(root,"Программа с пробелами"),keyPath="Software\\AnimeTracker.Tests\\Startup-"+Guid.NewGuid().ToString("N");Directory.CreateDirectory(program);Directory.CreateDirectory(folder);string exe=Path.Combine(program,"Anime Tracker.exe");File.WriteAllText(exe,"fixture");
   var registration=new StartupRegistration(folder,exe,keyPath);
   try {
-   if(registration.Enabled)throw new Exception("Unexpected startup registration");
+   if(registration.Enabled)throw new Exception("Unexpected startup registration");var missingFolder=Path.Combine(root,"missing-startup");var fresh=new StartupRegistration(missingFolder,exe,keyPath);if(fresh.Enabled || Directory.Exists(missingFolder))throw new Exception("Reading startup created a missing folder");fresh.Set(true);if(!fresh.Enabled)throw new Exception("Missing startup folder was not created");fresh.Set(false);
    using(var key=Registry.CurrentUser.CreateSubKey(keyPath))key.SetValue("AnimeTracker",registration.LegacyCommand);
    if(!registration.Enabled)throw new Exception("Legacy startup was lost");registration.Set(true);
    var link=ReadShortcut(registration.LinkPath);if(!registration.Enabled || link.Target!=exe || link.Arguments!="--startup" || link.Directory!=program)throw new Exception("Startup shortcut target/arguments/directory");
