@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -37,7 +37,7 @@ public partial class Tracker {
      actions.Children.Add(Btn("Изменить",delegate { Edit(owned,owner); render(); }));
     } else {
      var add=new Button { Content="＋ В планы",IsEnabled=!storageBlocked }; actions.Children.Add(add);
-     add.Click+=delegate { if(storageBlocked) return; try { Ratings.AddPlanned(library,entry,dataPath); undo=null; Refresh(); render(); } catch(Exception ex) { MessageBox.Show(owner,"Не удалось добавить аниме:\n"+ex.Message,"Ошибка сохранения"); } };
+     add.Click+=delegate { if(storageBlocked) return; try { service.Add(entry); undo=null; Refresh(); render(); } catch(Exception ex) { MessageBox.Show(owner,"Не удалось добавить аниме:\n"+ex.Message,"Ошибка сохранения"); } };
     }
     var cover=new Image { Width=52,Height=76,Stretch=Stretch.UniformToFill,Margin=new Thickness(10) }; DockPanel.SetDock(cover,Dock.Left); row.Children.Add(cover); LoadCover(cover,entry.Id,entry.CoverUrl,lifetime.Token);
     var text=new StackPanel { Margin=new Thickness(0,10,0,10) }; text.Children.Add(Text(entry.Title,16,Ink));

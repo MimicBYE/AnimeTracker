@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
 namespace AnimeTracker {
 public static partial class Catalog {
+ public static string CoverPath(int id) {return new TrackerFiles(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"data")).PathFor(Path.Combine("covers",id+".png"));}
  static readonly SemaphoreSlim CoverGate=new SemaphoreSlim(3,3);
  static readonly System.Collections.Concurrent.ConcurrentDictionary<int,BitmapSource> Images=new System.Collections.Concurrent.ConcurrentDictionary<int,BitmapSource>();
  static BitmapSource Decode(byte[] bytes) {

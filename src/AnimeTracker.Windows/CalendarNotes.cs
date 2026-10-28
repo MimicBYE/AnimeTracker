@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -20,7 +20,7 @@ public partial class Tracker {
   var bottom=new StackPanel { Margin=new Thickness(0,12,0,0) }; DockPanel.SetDock(bottom,Dock.Bottom); panel.Children.Add(bottom);
   bottom.Children.Add(Text("Личная заметка · сохраняется только на этом компьютере",11,Muted));
   var error=Text("",12,Brushes.Firebrick); bottom.Children.Add(error); var actions=new StackPanel { Orientation=Orientation.Horizontal,Margin=new Thickness(0,8,0,0) }; bottom.Children.Add(actions);
-  var save=Btn("Сохранить",delegate { if(storageBlocked) return; try { CalendarNotes.SaveNotes(library,anime,text.Text,dataPath); undo=null; Refresh(); window.Close(); } catch(Exception ex) { error.Text="Не удалось сохранить: "+ex.Message; } }); save.IsEnabled=!storageBlocked; actions.Children.Add(save);
+  var save=Btn("Сохранить",delegate { if(storageBlocked) return; try { service.Notes(anime,text.Text); undo=null; Refresh(); window.Close(); } catch(Exception ex) { error.Text="Не удалось сохранить: "+ex.Message; } }); save.IsEnabled=!storageBlocked; actions.Children.Add(save);
   var cancel=Btn("Отмена",delegate { window.Close(); }); cancel.IsCancel=true; actions.Children.Add(cancel); panel.Children.Add(text);
   window.Loaded+=delegate { text.Focus(); text.CaretIndex=text.Text.Length; }; window.ShowDialog();
  }
@@ -33,7 +33,7 @@ public partial class Tracker {
   var planned=new CheckBox { Content="Включать планы",IsChecked=true,VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(10,0,0,0) }; controls.Children.Add(planned);
   var info=Text("",12,Muted); header.Children.Add(info); DockPanel.SetDock(header,Dock.Top); panel.Children.Add(header);
   var rows=new StackPanel { Margin=new Thickness(0,12,0,0) }; var scroll=new SmoothScrollViewer { Content=rows,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled }; panel.Children.Add(scroll);
-  string path=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"data","schedule.xml"); var schedule=CalendarNotes.Load(path);
+  string path=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"data","schedule.xml"); var schedule=service.Schedule;
   var lifetime=new CancellationTokenSource(); bool closed=false,busy=false; DateTime week=CalendarNotes.Moscow(DateTimeOffset.UtcNow).Date; string message="";
   Func<Anime[]> selected=()=>library.Items.Where(a=>a.Status=="watching" || (planned.IsChecked==true && a.Status=="planned")).ToArray();
   Action render=null;
@@ -77,7 +77,7 @@ public partial class Tracker {
    }
   };
   Action scheduleUpdated=delegate {
-   if(closed) return; schedule=CalendarNotes.Load(path);
+   if(closed) return; schedule=service.Schedule;
    var stamps=selected().Where(a=>schedule.ContainsKey(a.CatalogId)).Select(a=>schedule[a.CatalogId].Checked).ToArray();
    message=stamps.Length==0?"Даты обновляются вместе с проверкой новых серий":"Данные на "+CalendarNotes.Moscow(new DateTimeOffset(DateTime.SpecifyKind(stamps.Min(),DateTimeKind.Utc))).ToString("dd.MM HH:mm")+" · только ближайшие серии";
    if(episodeUpdateError.Length>0) message=episodeUpdateError;

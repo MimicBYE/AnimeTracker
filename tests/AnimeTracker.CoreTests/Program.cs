@@ -10,6 +10,8 @@ try
     var copy = Library.Load(path).Items.Single(); if (copy.Notes != anime.Notes || copy.Id != anime.Id || copy.MalId != 21 || copy.Score != 8 || copy.Watched != 4) throw new Exception("Cross-platform XML roundtrip");
     PortTests.Run(root);
     LibraryStorageTests.Run(root);
+    await TrackerServiceTests.Run(root);
+    Console.WriteLine("PASS: shared application commands, persisted notifications, failed writes, current-state MAL merge, catalog batching/cancellation/overlap/stale responses and refresh retry");
     Console.WriteLine("PASS: failed writes preserve live/disk state, undo retry, strict/legacy XML, validated backup recovery and read-only failures");
     await CoverTests.Run();
     Console.WriteLine("PASS: shared Windows/macOS domain, XML, MAL/GZIP, queue/hiding, arcs, recommendations, ratings, notes, calendar, metadata preservation");

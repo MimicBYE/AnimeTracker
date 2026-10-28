@@ -14,17 +14,18 @@ using Forms = System.Windows.Forms;
 
 namespace AnimeTracker {
 public partial class Tracker : Application {
- Library library;
+ TrackerService service;
+ Library library {get{return service.Library;}}
  string dataPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "library.xml");
  Window widget, full;
  StackPanel widgetRows, fullRows;
  TextBox search;
  ComboBox filter, sortChoice;
  Button genreFilter;
- string viewPath=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"data","view-settings.xml");
  ViewPreferences preferences;
  Forms.NotifyIcon tray;
- bool quitting, storageBlocked;
+ bool quitting;
+ bool storageBlocked {get{return service.ReadOnly;}}
  Action undo;
  Button undoButton;
  Border widgetSurface;
@@ -83,11 +84,11 @@ public partial class Tracker : Application {
   <Style TargetType='Window'><Setter Property='FontFamily' Value='Segoe UI'/><Setter Property='Foreground' Value='#47361D'/><Setter Property='Background' Value='#F8EECC'/></Style>
   </ResourceDictionary>");
   using(var theme=System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("AnimeTracker.DropdownTheme")) Resources.MergedDictionaries.Add((ResourceDictionary)XamlReader.Load(theme));
-  var opened=LibraryStorage.Open(dataPath);library=opened.Library;storageBlocked=opened.ReadOnly;
-  if(opened.Message.Length>0)MessageBox.Show(opened.Message,storageBlocked?"Ошибка загрузки":"Восстановление библиотеки");
-  preferences=ViewPreferences.Load(viewPath); widgetOptions=WidgetOptions.Load(widgetOptionsPath);
+  service=new TrackerService(Path.GetDirectoryName(dataPath));
+  if(service.Error.Length>0)MessageBox.Show(service.Error,storageBlocked?"Ошибка загрузки":"Загрузка данных");
+  preferences=service.View;
   StartupDiagnostics.Write("library-loaded");
-  LoadWatchChoices();
+
   StartEpisodeUpdates();
   widgetHidden=!widgetOptions.Enabled; BuildWidget(); BuildTray(); if(!widgetHidden){widget.Show(); AttachDesktop();}
   StartupDiagnostics.Write("tray-created");
@@ -129,7 +130,7 @@ public partial class Tracker : Application {
  Button Btn(string text, Action action) { var b = new Button { Content=text }; b.Click += delegate { action(); }; return b; }
  Button Primary(Button button) { button.Background=new SolidColorBrush(Color.FromRgb(221,180,74));button.Foreground=Ink;button.FontWeight=FontWeights.SemiBold;return button; }
  Button Quiet(Button button) { button.Background=Brushes.Transparent;button.Foreground=Muted;return button; }
- void Persist() { if (storageBlocked) return; try { library.Save(dataPath); } catch (Exception ex) { MessageBox.Show("Не удалось сохранить изменения:\n" + ex.Message,"Ошибка сохранения"); } }
+ void Persist() { if (storageBlocked) return; try { service.Save(); } catch (Exception ex) { MessageBox.Show("Не удалось сохранить изменения:\n" + ex.Message,"Ошибка сохранения"); } }
  void BuildWidget() {
   StopWidgetAnimation();
   if(clickTimer!=null) clickTimer.Stop();
@@ -230,7 +231,7 @@ public partial class Tracker : Application {
  static Anime LatestAnime(Library source) { return source.Items.OrderByDescending(a=>a.Updated).FirstOrDefault(); }
  void Increment(Anime a) {
   if(storageBlocked)return;
-  try {var before=a.Copy();if(!LibraryStorage.Increment(library,a,dataPath))return;undo=delegate{LibraryStorage.RestoreProgress(library,a,before,dataPath);};Refresh();AnimateWidgetProgress(a);}
+  try {var before=a.Copy();if(!service.Increment(a))return;undo=delegate{service.RestoreProgress(a,before);};Refresh();AnimateWidgetProgress(a);}
   catch(Exception ex){MessageBox.Show("Не удалось сохранить серию:\n"+ex.Message,"Ошибка сохранения");}
  }
  bool IsButtonChild(DependencyObject obj) { while (obj!=null) { if (obj is System.Windows.Controls.Primitives.ButtonBase || obj is System.Windows.Controls.Primitives.ScrollBar) return true; obj=VisualTreeHelper.GetParent(obj); } return false; }
@@ -280,7 +281,7 @@ public partial class Tracker : Application {
  void SaveView() {
   if(search==null || filter==null || sortChoice==null) return;
   preferences.Search=search.Text; preferences.Sort=Math.Max(0,sortChoice.SelectedIndex); preferences.Status=filter.SelectedIndex<=0?"":MalImport.StatusKeys[filter.SelectedIndex-1];
-  try { preferences.Save(viewPath); } catch(Exception ex) { MessageBox.Show("Не удалось сохранить настройки вида:\n"+ex.Message); }
+  try { service.SaveView(); } catch(Exception ex) { MessageBox.Show("Не удалось сохранить настройки вида:\n"+ex.Message); }
  }
  void OpenGenreMenu() {
   var menu=new ContextMenu { MaxHeight=450, PlacementTarget=genreFilter, Placement=System.Windows.Controls.Primitives.PlacementMode.Bottom };
@@ -419,10 +420,10 @@ public partial class Tracker : Application {
    var a=existing==null?new Anime():existing.Copy(); a.Title=title; a.Score=Math.Max(0,rating.SelectedIndex); a.SetProgress(w,t,MalImport.StatusKeys[Math.Max(0,statusChoice.SelectedIndex)]); a.Updated=DateTime.UtcNow;
    if(selected!=null) { a.CatalogId=selected.Id; if(selected.AiringStatus!="") { a.AiringStatus=selected.AiringStatus; a.EpisodesAired=selected.EpisodesAired; a.EpisodesChecked=DateTime.UtcNow; } a.English=selected.English; a.Japanese=selected.Japanese; a.Romaji=selected.Romaji; a.CoverUrl=selected.CoverUrl; a.Genres=selected.Genres; if(selected.MalId>0) a.MalId=selected.MalId; }
    if(storageBlocked){error.Text="Запись библиотеки отключена.";return;}
-   try{LibraryStorage.SaveItem(library,existing,a,dataPath);undo=null;Refresh();dialog.Close();}catch(Exception ex){error.Text="Не удалось сохранить: "+ex.Message;}
+   try{service.SaveDraft(existing,a);undo=null;Refresh();dialog.Close();}catch(Exception ex){error.Text="Не удалось сохранить: "+ex.Message;}
   }); save.IsDefault=true; save.Background=Accent; save.Foreground=Brushes.Black; actions.Children.Add(save);
   var cancel=Btn("Отмена",delegate { dialog.Close(); }); cancel.IsCancel=true; actions.Children.Add(cancel);
-  if(existing!=null) actions.Children.Add(Btn("Удалить",delegate {if(storageBlocked)return;try{int index=library.Items.IndexOf(existing);LibraryStorage.Remove(library,existing,dataPath);undo=delegate{LibraryStorage.Insert(library,existing,index,dataPath);};Refresh();dialog.Close();}catch(Exception ex){error.Text="Не удалось удалить: "+ex.Message;} }));
+  if(existing!=null) actions.Children.Add(Btn("Удалить",delegate {if(storageBlocked)return;try{int index=library.Items.IndexOf(existing);service.Remove(existing);undo=delegate{service.Insert(existing,index);};Refresh();dialog.Close();}catch(Exception ex){error.Text="Не удалось удалить: "+ex.Message;} }));
   p.Children.Add(actions); dialog.Loaded += delegate { if(existing==null) query.Focus(); else { name.Focus(); name.SelectAll(); } }; dialog.ShowDialog();
  }
  async void LoadCover(Image target,int id,string url,System.Threading.CancellationToken token) { try { var bitmap=await Catalog.Cover(id,url,token); if(!token.IsCancellationRequested) target.Source=bitmap; } catch(OperationCanceledException) {} catch { target.ToolTip="Обложка недоступна"; } }
@@ -455,7 +456,7 @@ public partial class Tracker : Application {
    var widgetTest=new Library(); widgetTest.Items.Add(older); widgetTest.Items.Add(recent);
    if(LatestAnime(widgetTest)!=recent) throw new Exception("Widget must show latest user change regardless of status");
    older.Updated=recent.Updated.AddMinutes(1); if(LatestAnime(widgetTest)!=older) throw new Exception("Widget follows user edits");
-   ViewPreferences.Test(dir);SettingsBackupTest(dir);LibraryStorageTests.Run(dir);AutoStart.Test(dir);StartupDiagnostics.Test(dir);
+   ViewPreferences.Test(dir);SettingsBackupTest(dir);LibraryStorageTests.Run(dir);AutoStart.Test(dir);StartupDiagnostics.Test(dir);TrackerServiceTests.Run(dir).GetAwaiter().GetResult();
    var completion=new Anime { Watched=3,Total=12 };
    completion.SetProgress(3,12,"completed"); if(completion.Watched!=12 || completion.Status!="completed") throw new Exception("Completed fills known total");
    completion.SetProgress(5,0,"completed"); if(completion.Watched!=5) throw new Exception("Unknown total preserves progress");

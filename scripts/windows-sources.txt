@@ -20,6 +20,12 @@ src/AnimeTracker.Windows/WatchChoices.cs
 src/AnimeTracker.Windows/Version.cs
 src/AnimeTracker.Core/Domain.cs
 src/AnimeTracker.Core/LibraryStorage.cs
+src/AnimeTracker.Core/TrackerFiles.cs
+src/AnimeTracker.Core/TrackerService.cs
+src/AnimeTracker.Core/TrackerRefresh.cs
+src/AnimeTracker.Core/TrackerTransfers.cs
+src/AnimeTracker.Core/CatalogSource.cs
+tests/Shared/TrackerServiceTests.cs
 src/AnimeTracker.Core/LibraryStorageTests.cs
 src/AnimeTracker.Core/Catalog.cs
 src/AnimeTracker.Core/JsonCodec.cs

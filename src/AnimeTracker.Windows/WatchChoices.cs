@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -10,13 +10,12 @@ using System.Xml.Linq;
 
 namespace AnimeTracker {
 public partial class Tracker {
- readonly string watchChoicesPath=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"data","watch-choices.xml");
- WatchChoices watchChoices;
- bool watchChoicesBlocked;
+ WatchChoices watchChoices {get{return service.Choices;}}
+ bool watchChoicesBlocked {get{return service.ChoicesBlocked;}}
  event Action WatchChoicesChanged;
- void LoadWatchChoices(){try{watchChoices=WatchChoices.Load(watchChoicesPath);}catch(Exception ex){watchChoices=new WatchChoices();watchChoicesBlocked=true;MessageBox.Show(ex.Message,"Очередь просмотра");}}
+
  bool ChangeWatchChoices(Action<WatchChoices> edit,Window owner){
-  if(watchChoicesBlocked)return false;try{var next=watchChoices.Copy();edit(next);next.Save(watchChoicesPath);watchChoices=next;}catch(Exception ex){MessageBox.Show(owner,"Не удалось сохранить очередь или скрытые аниме:\n"+ex.Message,"Ошибка сохранения");return false;}
+  if(watchChoicesBlocked)return false;try{service.ChangeChoices(edit);}catch(Exception ex){MessageBox.Show(owner,"Не удалось сохранить очередь или скрытые аниме:\n"+ex.Message,"Ошибка сохранения");return false;}
   if(WatchChoicesChanged!=null)WatchChoicesChanged();return true;
  }
  void QueueCardButton(Anime anime,Window owner,Panel panel){
@@ -38,7 +37,7 @@ public partial class Tracker {
     var anime=active[i];var row=new DockPanel{Background=new SolidColorBrush(Color.FromRgb(255,249,225)),Margin=new Thickness(0,0,0,12)};var actions=new WrapPanel{Width=210,Margin=new Thickness(10),VerticalAlignment=VerticalAlignment.Center};DockPanel.SetDock(actions,Dock.Right);row.Children.Add(actions);
     var up=Btn("↑",delegate{ChangeWatchChoices(next=>next.Move(anime.Id,-1,library),owner);});up.IsEnabled=!watchChoicesBlocked&&i>0;actions.Children.Add(up);var down=Btn("↓",delegate{ChangeWatchChoices(next=>next.Move(anime.Id,1,library),owner);});down.IsEnabled=!watchChoicesBlocked&&i<active.Length-1;actions.Children.Add(down);
     var remove=Btn("Убрать",delegate{ChangeWatchChoices(next=>next.Queue.Remove(anime.Id),owner);});remove.IsEnabled=!watchChoicesBlocked;actions.Children.Add(remove);
-    actions.Children.Add(Btn(anime.Status=="watching"?"Продолжить":"Начать",delegate{if(storageBlocked)return;try{if(anime.Status!="watching"){Ratings.UpdatePersonal(library,anime,"watching",null,dataPath);Refresh();}OpenAnimeCard(anime,owner);render();}catch(Exception ex){info.Text=ex.Message;}}));
+    actions.Children.Add(Btn(anime.Status=="watching"?"Продолжить":"Начать",delegate{if(storageBlocked)return;try{if(anime.Status!="watching"){service.Personal(anime,"watching",null);Refresh();}OpenAnimeCard(anime,owner);render();}catch(Exception ex){info.Text=ex.Message;}}));
     actions.Children.Add(Btn("Карточка",delegate{OpenAnimeCard(anime,owner);render();}));actions.Children.Add(Btn("В виджет",delegate{SaveWidgetOptions(anime.Id,widgetOptions.Style);}));
     var cover=new Image{Width=55,Height=80,Stretch=Stretch.Uniform,Margin=new Thickness(12)};DockPanel.SetDock(cover,Dock.Left);row.Children.Add(cover);LoadCover(cover,anime.CatalogId,anime.CoverUrl,lifetime.Token);
     var texts=new StackPanel{Margin=new Thickness(0,12,0,12)};texts.Children.Add(Text((i+1)+". "+anime.Title,17,Ink));texts.Children.Add(Text(MalImport.StatusLabel(anime.Status)+" · "+anime.Watched+" / "+(anime.Total>0?anime.Total.ToString():"?")+" серий",12,Muted));if(watchChoices.IsHidden(anime))texts.Children.Add(Text("Скрыто в вечернем подборе",11,Muted));row.Children.Add(texts);rows.Children.Add(row);

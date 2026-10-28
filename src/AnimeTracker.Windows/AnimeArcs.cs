@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -18,9 +18,9 @@ public partial class Tracker {
  FrameworkElement BuildArcs(Anime anime,Window owner,CancellationToken token) {
   var section=new Expander{Header="Арки и филлеры",Foreground=Ink,Margin=new Thickness(0,16,0,16)};var panel=new StackPanel();section.Content=panel;
   panel.Children.Add(Text("Номера серий относятся к этому сезону. Разметка не меняет прогресс просмотра.",12,Muted));
-  string path=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"data","arcs.xml"),cache=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"data","episode-flags",anime.MalId+".xml");
+  string path=service.Files.Arcs,cache=service.FilePath(Path.Combine("episode-flags",anime.MalId+".xml"));
   var catalog=ArcCatalog.Find(anime.MalId,anime.Id);var flags=catalog!=null?catalog.Flags:anime.MalId>0?ArcData.ReadCache(cache):new EpisodeFlags();
-  List<AnimeArc> arcs=null;string error="";try{arcs=ArcData.Load(path);}catch(Exception ex){error="Не удалось прочитать арки: "+ex.Message;}
+  List<AnimeArc> arcs=service.ArcsBlocked?null:service.Arcs.ToList();string error=service.ArcsBlocked?"Не удалось прочитать арки. Исходный файл сохранён.":"";
   var toolbar=new WrapPanel{Margin=new Thickness(0,10,0,10)};panel.Children.Add(toolbar);
   var add=new Button{Content="＋ Добавить арку",IsEnabled=arcs!=null&&!storageBlocked};toolbar.Children.Add(add);
   var update=new Button{Content="Обновить отметки серий",IsEnabled=anime.MalId>0,Visibility=catalog==null?Visibility.Visible:Visibility.Collapsed};toolbar.Children.Add(update);
@@ -53,7 +53,7 @@ public partial class Tracker {
     row.Children.Add(texts);rows.Children.Add(row);
    }
    if(shown==0)rows.Children.Add(Text(onlyFiller.IsChecked==true?"Арки с отмеченными филлерами не найдены.":"Именованных арок пока нет. Их можно добавить вручную.",12,Muted));
-   if(arcs!=null&&catalog!=null&&arcs.Any(a=>a.AnimeId==anime.Id&&a.CatalogKey!=""))rows.Children.Add(Btn("Сбросить правки справочных арок",delegate{if(storageBlocked)return;try{var updated=arcs.Where(a=>a.AnimeId!=anime.Id||a.CatalogKey=="").ToList();ArcData.Save(updated,path);arcs.Clear();arcs.AddRange(updated);render();}catch(Exception ex){info.Text=ex.Message;}}));
+   if(arcs!=null&&catalog!=null&&arcs.Any(a=>a.AnimeId==anime.Id&&a.CatalogKey!=""))rows.Children.Add(Btn("Сбросить правки справочных арок",delegate{if(storageBlocked)return;try{var updated=arcs.Where(a=>a.AnimeId!=anime.Id||a.CatalogKey=="").ToList();service.SaveArcs(updated);arcs.Clear();arcs.AddRange(updated);render();}catch(Exception ex){info.Text=ex.Message;}}));
    var ranges=new Expander{Header="Отметки по сериям · "+(catalog==null?"Jikan / MyAnimeList":"AnimeFillerList"),Margin=new Thickness(0,12,0,0),Foreground=Ink};var list=new StackPanel();ranges.Content=list;rows.Children.Add(ranges);
    foreach(var range in ArcData.Ranges(flags)){if(onlyFiller.IsChecked==true&&range.Type!="filler")continue;list.Children.Add(Text((range.From==range.To?"Серия "+range.From:"Серии "+range.From+"–"+range.To)+" · "+ArcData.Label(range.Type),12,range.Type=="filler"?Brushes.Sienna:Muted));}
    if(flags.Items.Count==0)list.Children.Add(Text("Отметок пока нет. Источник может не содержать серии для этого тайтла.",12,Muted));
@@ -70,7 +70,7 @@ public partial class Tracker {
   panel.Children.Add(Text("Серии · например: 1–12, 15, 18–24",12,Muted));var intervals=new TextBox{Text=existing==null?"1":ArcCatalog.Format(ArcCatalog.Episodes(existing)),Margin=new Thickness(0,5,0,12)};panel.Children.Add(intervals);
   panel.Children.Add(Text("Тип",12,Muted));var type=new ComboBox{ItemsSource=ArcData.Labels,SelectedIndex=existing==null?0:Array.IndexOf(ArcData.Types,existing.Type),Margin=new Thickness(0,5,0,12)};panel.Children.Add(type);
   panel.Children.Add(Text("Ваши правки имеют приоритет над справочником. Статус и прогресс просмотра не меняются.",12,Muted));var error=Text("",12,Brushes.Firebrick);panel.Children.Add(error);var buttons=new WrapPanel{Margin=new Thickness(0,16,0,0)};panel.Children.Add(buttons);
-  Action<List<AnimeArc>> save=delegate(List<AnimeArc> updated){ArcData.Save(updated,path);arcs.Clear();arcs.AddRange(updated);window.Close();};
+  Action<List<AnimeArc>> save=delegate(List<AnimeArc> updated){service.SaveArcs(updated);arcs.Clear();arcs.AddRange(updated);window.Close();};
   buttons.Children.Add(Btn("Сохранить арку",delegate{if(storageBlocked)return;try{
    var changed=new AnimeArc{Id=existing==null?Guid.NewGuid().ToString():existing.Id,AnimeId=anime.Id,Name=name.Text.Trim(),Type=ArcData.Types[Math.Max(0,type.SelectedIndex)],CatalogKey=existing==null?"":existing.CatalogKey};
    ArcCatalog.SetEpisodes(changed,ArcCatalog.Episodes(intervals.Text));ArcData.Validate(changed);
