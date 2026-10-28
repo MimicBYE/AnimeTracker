@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
@@ -57,7 +57,7 @@ public partial class Tracker {
         bool restoring=false;
         Action<string,int?> save=delegate(string value,int? rating) {
          if(restoring || storageBlocked) return;
-         try { Ratings.UpdatePersonal(library,owned,value,rating,dataPath); undo=null; Refresh(); feedback.Text="Сохранено"; }
+         try { service.Personal(owned,value,rating); undo=null; Refresh(); feedback.Text="Сохранено"; }
          catch(Exception ex) {
           restoring=true; status.SelectedIndex=Array.IndexOf(MalImport.StatusKeys,owned.Status); score.SelectedIndex=owned.Score; restoring=false;
           feedback.Text="Не сохранено"; MessageBox.Show(window,"Не удалось сохранить изменения:\n"+ex.Message,"Ошибка сохранения");
@@ -77,7 +77,7 @@ public partial class Tracker {
        add.Click+=delegate {
         if(storageBlocked) return;
         add.IsEnabled=false;
-        try { Ratings.AddPlanned(library,a,dataPath); undo=null; Refresh(); bindAdd(); }
+        try { service.Add(a); undo=null; Refresh(); bindAdd(); }
         catch(Exception ex) { add.IsEnabled=true; MessageBox.Show(window,"Не удалось добавить аниме:\n"+ex.Message,"Ошибка сохранения"); }
        };
       }; bindAdd(); refreshActions.Add(bindAdd);

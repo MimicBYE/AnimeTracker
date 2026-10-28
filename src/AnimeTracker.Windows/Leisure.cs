@@ -12,15 +12,14 @@ using System.Xml.Linq;
 
 namespace AnimeTracker {
 public partial class Tracker {
- readonly string widgetOptionsPath=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"data","widget-settings.xml");
- WidgetOptions widgetOptions;
+ WidgetOptions widgetOptions {get{return service.Widget;}}
  DockPanel widgetSummary;
  ProgressBar widgetProgressBar;
  Button widgetPrevious,widgetNext;
  Anime WidgetAnime() { return WidgetOptions.Selected(library,widgetOptions==null?"":widgetOptions.Pinned); }
  Size CompactSize() { var size=WidgetOptions.Size(widgetOptions==null?0:widgetOptions.Style);return new Size(size.Width,size.Height); }
  bool SaveWidgetOptions(string pinned,int style,bool? enabled=null) {
-  try { var next=new WidgetOptions {Pinned=pinned,Style=style,Enabled=enabled??widgetOptions.Enabled}; next.Save(widgetOptionsPath); widgetOptions=next; widgetHidden=!next.Enabled; ApplyWidgetStyle();if(widgetHidden)widget.Hide();else{widget.Show();AttachDesktop();} Refresh(); return true; }
+  try { service.SetWidget(pinned,style,enabled); var next=service.Widget; widgetHidden=!next.Enabled; ApplyWidgetStyle();if(widgetHidden)widget.Hide();else{widget.Show();AttachDesktop();} Refresh(); return true; }
   catch(Exception ex) { MessageBox.Show("Не удалось сохранить настройки виджета:\n"+ex.Message); return false; }
  }
  void CycleWidget(int direction) {
@@ -60,8 +59,7 @@ public partial class Tracker {
   var hiddenButton=Btn("Скрытые аниме",delegate{ShowHiddenAnime(owner);});hiddenButton.HorizontalAlignment=HorizontalAlignment.Left;hiddenButton.Margin=new Thickness(0,0,0,8);header.Children.Add(hiddenButton);
   var info=Text("",12,Muted); header.Children.Add(info);
   var output=new StackPanel {Margin=new Thickness(0,18,0,0)}; panel.Children.Add(new SmoothScrollViewer {Content=output,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled});
-  var meta=new Dictionary<int,CatalogEntry>(); string cache=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"data","evening-cache.xml");
-  try { if(File.Exists(cache)) foreach(var x in XElement.Load(cache).Elements("anime")) {int id=(int)x.Attribute("id"); meta[id]=new CatalogEntry {Id=id,Kind=(string)x.Attribute("kind")??"",Duration=(int?)x.Attribute("duration")??0,Episodes=(int?)x.Attribute("episodes")??0,EpisodesAired=(int?)x.Attribute("aired")??0,AiringStatus=(string)x.Attribute("status")??"",Genres=(string)x.Attribute("genres")??""};} } catch(Exception) {meta.Clear();}
+  var meta=new Dictionary<int,CatalogEntry>(service.Metadata);
   Func<int[]> metadataIds=()=>library.Items.Where(a=>(source.SelectedIndex==2?watchChoices.Queue.Contains(a.Id):a.Status=="planned")&&a.CatalogId>0).Select(a=>a.CatalogId).Distinct().OrderBy(id=>id).ToArray();
   var topEntries=new List<CatalogEntry>(); var prerequisites=new Dictionary<int,List<CatalogEntry>>(); bool topLoaded=false;
   var excluded=new HashSet<string>(); var random=new Random(); Anime current=null; bool closed=false,busy=false,loaded=false; string loadedIds=""; var lifetime=new CancellationTokenSource();
@@ -81,13 +79,13 @@ public partial class Tracker {
    var actions=new WrapPanel {Margin=new Thickness(0,18,0,0)}; text.Children.Add(actions);
    var secondary=new WrapPanel {Margin=new Thickness(0,10,0,0)};text.Children.Add(secondary);
    bool inLibrary=library.Items.Contains(a);
-   if(!inLibrary) actions.Children.Add(Primary(Btn("＋ В планы",delegate {if(storageBlocked)return;try{var entry=topEntries.First(e=>e.Id==a.CatalogId);Ratings.AddPlanned(library,entry,dataPath);Refresh();info.Text="Добавлено в планы: "+a.Title;pick();}catch(Exception ex){info.Text=ex.Message;}})));
+   if(!inLibrary) actions.Children.Add(Primary(Btn("＋ В планы",delegate {if(storageBlocked)return;try{var entry=topEntries.First(e=>e.Id==a.CatalogId);service.Add(entry);Refresh();info.Text="Добавлено в планы: "+a.Title;pick();}catch(Exception ex){info.Text=ex.Message;}})));
    else {
-    actions.Children.Add(Primary(Btn(a.Status=="watching"?"Продолжить смотреть":"Начать смотреть",delegate {if(a.Status=="watching"){OpenAnimeCard(a,owner);pick();return;}if(storageBlocked)return;try{Ratings.UpdatePersonal(library,a,"watching",null,dataPath);Refresh();pick();}catch(Exception ex){info.Text=ex.Message;}})));
+    actions.Children.Add(Primary(Btn(a.Status=="watching"?"Продолжить смотреть":"Начать смотреть",delegate {if(a.Status=="watching"){OpenAnimeCard(a,owner);pick();return;}if(storageBlocked)return;try{service.Personal(a,"watching",null);Refresh();pick();}catch(Exception ex){info.Text=ex.Message;}})));
     actions.Children.Add(Btn("Карточка",delegate {OpenAnimeCard(a,owner);pick();}));
    }
    var queueButton=Btn(inLibrary&&watchChoices.Queue.Contains(a.Id)?"Уже в очереди":"＋ В очередь",delegate{
-    if(watchChoicesBlocked)return;try{var owned=a;if(!library.Items.Contains(owned)){if(storageBlocked)return;owned=Ratings.AddPlanned(library,topEntries.First(e=>e.Id==a.CatalogId),dataPath);Refresh();}ChangeWatchChoices(next=>next.Add(owned),owner);}catch(Exception ex){info.Text=ex.Message;}
+    if(watchChoicesBlocked)return;try{var owned=a;if(!library.Items.Contains(owned)){if(storageBlocked)return;owned=service.Add(topEntries.First(e=>e.Id==a.CatalogId));Refresh();}ChangeWatchChoices(next=>next.Add(owned),owner);}catch(Exception ex){info.Text=ex.Message;}
    });queueButton.IsEnabled=!watchChoicesBlocked&&!(inLibrary&&watchChoices.Queue.Contains(a.Id))&&(!storageBlocked||inLibrary);secondary.Children.Add(Quiet(queueButton));
    var hide=Quiet(Btn("Не предлагать",delegate{ChangeWatchChoices(next=>next.Hide(a,details),owner);}));hide.IsEnabled=!watchChoicesBlocked;secondary.Children.Add(hide);
    actions.Children.Add(Quiet(Btn("Другой вариант",delegate {excluded.Add(a.Id); pick();})));
@@ -97,8 +95,7 @@ public partial class Tracker {
   Action refreshGenres=delegate {var selected=genre.SelectedItem as string;var available=source.SelectedIndex==1?topEntries.SelectMany(e=>e.Genres.Split('|')).Where(g=>g.Length>0):(source.SelectedIndex==2?(IEnumerable<Anime>)watchChoices.Active(library):library.Items.Where(a=>a.Status=="planned")).SelectMany(a=>LibraryView.Genres(a));var choices=new[]{"Все жанры"}.Concat(available.Distinct().OrderBy(x=>x)).ToArray();genre.ItemsSource=choices;genre.SelectedIndex=Math.Max(0,Array.IndexOf(choices,selected));};
   Func<System.Threading.Tasks.Task> load=async delegate {
    if(busy||closed)return; busy=true; source.IsEnabled=false; reload.IsEnabled=false; info.Text="Уточняю формат и длительность в Shikimori…";
-   try {if(source.SelectedIndex==1){var fresh=new List<CatalogEntry>();for(int page=1;page<=4;page++){info.Text="Загрузка топа Shikimori: "+page+" / 4";var entries=await Catalog.Top(page,lifetime.Token);if(closed)return;fresh.AddRange(entries);if(entries.Count<50)break;}fresh=fresh.GroupBy(e=>e.Id).Select(g=>g.First()).ToList();info.Text="Проверяю предыдущие сезоны…";var checkedLinks=await EveningPrerequisites.Load(fresh,library,lifetime.Token,count=>{info.Text="Проверяю цепочки предыдущих сезонов: "+count;});if(closed)return;prerequisites=checkedLinks;topEntries=fresh;foreach(var entry in topEntries)meta[entry.Id]=entry;topLoaded=true;refreshGenres();info.Text="Подбор из первых "+topEntries.Count+" позиций топа Shikimori · просмотренные и продолжения без пройденных сезонов исключены";return;}var ids=metadataIds(); for(int offset=0;offset<ids.Length;offset+=50) {var entries=await Catalog.ByIds(ids.Skip(offset).Take(50),lifetime.Token); if(closed)return; foreach(var e in entries) meta[e.Id]=e;}
-    new XElement("evening",meta.Values.Select(e=>new XElement("anime",new XAttribute("id",e.Id),new XAttribute("kind",e.Kind),new XAttribute("duration",e.Duration),new XAttribute("episodes",e.Episodes),new XAttribute("aired",e.EpisodesAired),new XAttribute("status",e.AiringStatus),new XAttribute("genres",e.Genres)))).Save(cache+".tmp"); if(File.Exists(cache)) File.Replace(cache+".tmp",cache,cache+".bak"); else File.Move(cache+".tmp",cache);
+   try {if(source.SelectedIndex==1){var fresh=new List<CatalogEntry>();for(int page=1;page<=4;page++){info.Text="Загрузка топа Shikimori: "+page+" / 4";var entries=await Catalog.Top(page,lifetime.Token);if(closed)return;fresh.AddRange(entries);if(entries.Count<50)break;}fresh=fresh.GroupBy(e=>e.Id).Select(g=>g.First()).ToList();info.Text="Проверяю предыдущие сезоны…";var checkedLinks=await EveningPrerequisites.Load(fresh,library,lifetime.Token,count=>{info.Text="Проверяю цепочки предыдущих сезонов: "+count;});if(closed)return;prerequisites=checkedLinks;topEntries=fresh;foreach(var entry in topEntries)meta[entry.Id]=entry;topLoaded=true;refreshGenres();info.Text="Подбор из первых "+topEntries.Count+" позиций топа Shikimori · просмотренные и продолжения без пройденных сезонов исключены";return;}var ids=metadataIds(); await service.RefreshMetadata(ids,lifetime.Token); if(closed)return; foreach(var e in service.Metadata.Values)meta[e.Id]=e;
     info.Text="Данные обновлены · время указано без перерывов"; loaded=true; loadedIds=String.Join(",",ids.OrderBy(id=>id));
    } catch(Exception) {if(!closed) info.Text="Каталог недоступен. Используются сохранённые данные; неизвестная длительность не оценивается.";}
    finally {busy=false; if(!closed) {source.IsEnabled=true; reload.IsEnabled=true; pick();}}

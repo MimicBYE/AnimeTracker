@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -34,10 +34,10 @@ public partial class Tracker {
   var import=Btn("Импортировать "+rows.Count+" записей",delegate {
    try {
     // Rebuild against current state so a concurrent widget increment is never lost.
-    var latestRows=MalImport.Preview(library,incoming); var next=MalImport.Merge(library,latestRows,overwrite.IsChecked==true);
-    string backup=MalImport.Commit(library,next,picker.FileName,dataPath);
-    library=next; undo=null; Refresh(); dialog.Close();
-    MessageBox.Show("Импорт завершён. Новых записей: "+latestRows.Count(x=>x.Existing==null)+". Совпадений: "+latestRows.Count(x=>x.Existing!=null)+".\n\nИсходный экспорт и резервная копия:\n"+backup,"Импорт MyAnimeList");
+    var result=service.CommitMal(picker.FileName,incoming,overwrite.IsChecked==true);
+    string backup=result.Backup;
+    undo=null; Refresh(); dialog.Close();
+    MessageBox.Show("Импорт завершён. Новых записей: "+result.Added+". Совпадений: "+result.Matched+".\n\nИсходный экспорт и резервная копия:\n"+backup,"Импорт MyAnimeList");
    } catch(Exception ex) { MessageBox.Show("Импорт не завершён.\n"+ex.Message,"Импорт MyAnimeList"); }
   }); actions.Children.Add(import); var cancel=Btn("Отмена",delegate { dialog.Close(); }); cancel.IsCancel=true; actions.Children.Add(cancel); DockPanel.SetDock(actions,Dock.Bottom); panel.Children.Add(actions);
   var grid=new DataGrid { AutoGenerateColumns=false, IsReadOnly=true, CanUserAddRows=false, ItemsSource=rows, EnableRowVirtualization=true, Background=System.Windows.Media.Brushes.White, RowBackground=System.Windows.Media.Brushes.FloralWhite, Foreground=Ink, GridLinesVisibility=DataGridGridLinesVisibility.Horizontal };

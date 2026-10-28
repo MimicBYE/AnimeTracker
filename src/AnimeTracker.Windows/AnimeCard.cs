@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -64,15 +64,15 @@ public partial class Tracker {
    try { var result=await Catalog.Sequels(new[]{anime.CatalogId},lifetime.Token); if(closed) return; sequelRows.Children.Clear();
     foreach(var entry in result[anime.CatalogId]) { var e=entry; var row=new DockPanel { Margin=new Thickness(0,8,0,0) }; var owned=Ratings.Find(library,e);
      var button=new Button { Content=owned==null?"＋ В планы":"Открыть",IsEnabled=!storageBlocked }; DockPanel.SetDock(button,Dock.Right); row.Children.Add(button); row.Children.Add(Text(e.Title,14,Ink)); sequelRows.Children.Add(row);
-     button.Click+=delegate { try { var found=Ratings.Find(library,e); if(found!=null) OpenAnimeCard(found,window); else { Ratings.AddPlanned(library,e,dataPath); button.Content="Открыть"; Refresh(); } } catch(Exception ex) { error.Text=ex.Message; } };
+     button.Click+=delegate { try { var found=Ratings.Find(library,e); if(found!=null) OpenAnimeCard(found,window); else { service.Add(e); button.Content="Открыть"; Refresh(); } } catch(Exception ex) { error.Text=ex.Message; } };
     } if(sequelRows.Children.Count==0) sequelRows.Children.Add(Text("В каталоге пока нет продолжений.",12,Muted)); Reveal(sequelRows);
    } catch(Exception) { if(!closed) { sequelRows.Children.Clear(); sequelRows.Children.Add(Text("Не удалось загрузить. Сверните и раскройте раздел для повтора.",12,Muted)); sequelsLoaded=false; } }
   };
-  actions.Children.Add(Btn("Сохранить",delegate { if(storageBlocked) return; int w,t; if(!Int32.TryParse(watched.Text,out w)||!Int32.TryParse(total.Text,out t)) { error.Text="Количество серий должно быть целым числом."; return; } try { CardEdits.Save(library,anime,title.Text,w,t,MalImport.StatusKeys[Math.Max(0,status.SelectedIndex)],Math.Max(0,score.SelectedIndex),notes.Text,dataPath); undo=null; Refresh(); window.Close(); } catch(Exception ex) { error.Text="Не удалось сохранить: "+ex.Message; } }));
+  actions.Children.Add(Btn("Сохранить",delegate { if(storageBlocked) return; int w,t; if(!Int32.TryParse(watched.Text,out w)||!Int32.TryParse(total.Text,out t)) { error.Text="Количество серий должно быть целым числом."; return; } try { service.Update(anime,title.Text,w,t,MalImport.StatusKeys[Math.Max(0,status.SelectedIndex)],Math.Max(0,score.SelectedIndex),notes.Text); undo=null; Refresh(); window.Close(); } catch(Exception ex) { error.Text="Не удалось сохранить: "+ex.Message; } }));
   var cancel=Btn("Закрыть без сохранения",delegate { window.Close(); }); cancel.IsCancel=true; actions.Children.Add(cancel);
   QueueCardButton(anime,window,actions);
   actions.Children.Add(Btn("В виджет",delegate { SaveWidgetOptions(anime.Id,widgetOptions.Style); }));
-  actions.Children.Add(Btn("Удалить",delegate { if(storageBlocked) return; try {int index=library.Items.IndexOf(anime);LibraryStorage.Remove(library,anime,dataPath);undo=delegate{LibraryStorage.Insert(library,anime,index,dataPath);};Refresh();window.Close();} catch(Exception ex) { error.Text=ex.Message; } }));
+  actions.Children.Add(Btn("Удалить",delegate { if(storageBlocked) return; try {int index=library.Items.IndexOf(anime);service.Remove(anime);undo=delegate{service.Insert(anime,index);};Refresh();window.Close();} catch(Exception ex) { error.Text=ex.Message; } }));
   window.Loaded+=async delegate { cardScroll.Focus(); cardScroll.ResetToTop(); Reveal(hero); Reveal(sheet,65); if(anime.CatalogId<=0) return;
    try { var entries=await Catalog.ByIds(new[]{anime.CatalogId},lifetime.Token,true); if(closed) return; var entry=entries.FirstOrDefault(); description.Text=entry==null||String.IsNullOrWhiteSpace(entry.Description)?"Описание в каталоге отсутствует.":entry.Description; Reveal(description); }
    catch(Exception) { if(!closed) description.Text="Описание сейчас недоступно. Личные данные можно редактировать без интернета."; }

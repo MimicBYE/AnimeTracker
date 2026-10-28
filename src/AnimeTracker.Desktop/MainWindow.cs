@@ -120,7 +120,7 @@ public sealed partial class MainWindow:Window
         var incoming=MalImport.Read(path);var rows=MalImport.Preview(store.Library,incoming);var check=new CheckBox{Content="Для совпадений взять статус из XML",IsChecked=false};
         var preview=new StackPanel{Spacing=5};preview.Children.Add(Paper.Text("В файле: "+incoming.Count+" · новых: "+rows.Count(r=>r.Existing==null),18));preview.Children.Add(Paper.Text("Прогресс не уменьшается. Перед импортом сохраняются копии исходного файла и библиотеки.",12,Paper.Muted));preview.Children.Add(check);
         foreach(var row in rows)preview.Children.Add(Paper.Text(row.Title+" · "+row.MalStatus+" · "+row.Progress+" · "+row.Local,12));
-        var panel=new DockPanel();var dialog=Paper.Dialog(owner,"Импорт MyAnimeList — предварительный просмотр",panel,740,570);var buttons=Paper.Actions(Paper.AsyncButton("Импортировать",()=>Act(()=>{store.ImportMal(path,check.IsChecked==true);dialog.Close();SetMessage("Импортировано записей: "+incoming.Count);},dialog)),Paper.Button("Отмена",()=>dialog.Close()));DockPanel.SetDock(buttons,Dock.Bottom);panel.Children.Add(buttons);panel.Children.Add(Paper.Scroll(preview));await Modal(dialog,owner);
+        var panel=new DockPanel();var dialog=Paper.Dialog(owner,"Импорт MyAnimeList — предварительный просмотр",panel,740,570);var buttons=Paper.Actions(Paper.AsyncButton("Импортировать",()=>Act(()=>{store.CommitMal(path,incoming,check.IsChecked==true);dialog.Close();SetMessage("Импортировано записей: "+incoming.Count);},dialog)),Paper.Button("Отмена",()=>dialog.Close()));DockPanel.SetDock(buttons,Dock.Bottom);panel.Children.Add(buttons);panel.Children.Add(Paper.Scroll(preview));await Modal(dialog,owner);
     }
     public async Task Settings()
     {

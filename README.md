@@ -127,9 +127,10 @@ Windows-сборка не имеет цифровой подписи. Для **A
 | `AnimeTracker.exe` | Запуск Windows-приложения из корня папки |
 | `src/AnimeTracker.Windows/` | Интерфейс WPF, трей и закрепление Windows |
 | `src/AnimeTracker.Desktop/` | Интерфейс Avalonia и интеграция macOS |
-| `src/AnimeTracker.Core/` | Общая логика, форматы данных, каталог и импорт |
+| `src/AnimeTracker.Core/` | Единый TrackerService для обеих платформ, доменные правила, XML, каталог и импорт |
 | `scripts/` | Сборка, упаковка релизов и генерация иконок |
 | `tests/AnimeTracker.CoreTests/` | Проверки общей логики и переноса данных |
+| `tests/Shared/` | Одинаковые контракты сервиса под .NET и Windows/.NET Framework |
 | `docs/` | Инструкции, история изменений и атрибуция |
 | `data/` | Личная Windows-библиотека; не включается в Git/релиз |
 | `dist/windows/`, `dist/macos/` | Готовые архивы по платформам |
@@ -137,6 +138,8 @@ Windows-сборка не имеет цифровой подписи. Для **A
 | `.tools/` | Локальный SDK/кеш разработчика; не часть исходников |
 
 В скачанном архиве Windows запускайте **AnimeTracker.exe**, в Mac-архиве — **Anime Tracker.app**. В репозитории хранятся исходники; EXE появляется после сборки. Точки входа в коде: `src/AnimeTracker.Windows/App.cs` и `src/AnimeTracker.Desktop/Program.cs`.
+
+Windows и Avalonia используют один сервис операций библиотеки и обновления серий. Нативные функции и интерфейс находятся в платформенных адаптерах. Карта файлов, правила сохранения и расширения — [архитектура ядра](docs/ARCHITECTURE.md).
 
 ## Сборка из исходников
 
