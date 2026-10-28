@@ -2,6 +2,8 @@ using System;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
+using System.Text;
 using Microsoft.Win32;
 
 namespace AnimeTracker {
@@ -14,16 +16,37 @@ public static class AutoStart {
  internal sealed class Shortcut {
   public string Target,Arguments,Directory;
  }
- internal static Shortcut ReadShortcut(string path) { return WithShortcut(path,delegate(object link) { return new Shortcut {Target=(string)Property(link,"TargetPath"),Arguments=(string)Property(link,"Arguments"),Directory=(string)Property(link,"WorkingDirectory")}; }); }
- static object Property(object link,string name) { return link.GetType().InvokeMember(name,BindingFlags.GetProperty,null,link,null); }
- static void Property(object link,string name,object value) {try{link.GetType().InvokeMember(name,BindingFlags.SetProperty,null,link,new[]{value});}catch(TargetInvocationException ex){throw new InvalidOperationException("Не удалось установить свойство ярлыка: "+name,ex);}}
- static T WithShortcut<T>(string path,Func<object,T> action) {
-  object shell=null,link=null;
-  try {var type=Type.GetTypeFromProgID("WScript.Shell",true);shell=Activator.CreateInstance(type);link=type.InvokeMember("CreateShortcut",BindingFlags.InvokeMethod,null,shell,new object[]{path});return action(link);}
-  finally {if(link!=null && Marshal.IsComObject(link))Marshal.FinalReleaseComObject(link);if(shell!=null && Marshal.IsComObject(shell))Marshal.FinalReleaseComObject(shell);}
+ // WScript.Shell rejects target paths outside the system ANSI code page.
+ // Use the explicit Unicode Shell interface; do not resolve/move stale targets.
+ [ComImport,Guid("000214F9-0000-0000-C000-000000000046"),InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+ interface IShellLinkW {
+  void GetPath([Out,MarshalAs(UnmanagedType.LPWStr)] StringBuilder path,int capacity,IntPtr findData,uint flags);
+  void GetIDList(out IntPtr idList);
+  void SetIDList(IntPtr idList);
+  void GetDescription([Out,MarshalAs(UnmanagedType.LPWStr)] StringBuilder description,int capacity);
+  void SetDescription([MarshalAs(UnmanagedType.LPWStr)] string description);
+  void GetWorkingDirectory([Out,MarshalAs(UnmanagedType.LPWStr)] StringBuilder directory,int capacity);
+  void SetWorkingDirectory([MarshalAs(UnmanagedType.LPWStr)] string directory);
+  void GetArguments([Out,MarshalAs(UnmanagedType.LPWStr)] StringBuilder arguments,int capacity);
+  void SetArguments([MarshalAs(UnmanagedType.LPWStr)] string arguments);
+  void GetHotkey(out short hotkey);
+  void SetHotkey(short hotkey);
+  void GetShowCmd(out int showCommand);
+  void SetShowCmd(int showCommand);
+  void GetIconLocation([Out,MarshalAs(UnmanagedType.LPWStr)] StringBuilder icon,int capacity,out int index);
+  void SetIconLocation([MarshalAs(UnmanagedType.LPWStr)] string icon,int index);
+  void SetRelativePath([MarshalAs(UnmanagedType.LPWStr)] string path,uint reserved);
+  void Resolve(IntPtr window,uint flags);
+  void SetPath([MarshalAs(UnmanagedType.LPWStr)] string path);
+ }
+ internal static Shortcut ReadShortcut(string path) {return WithShortcut(path,true,delegate(IShellLinkW link) {var target=new StringBuilder(32768);var arguments=new StringBuilder(32768);var directory=new StringBuilder(32768);link.GetPath(target,target.Capacity,IntPtr.Zero,4);link.GetArguments(arguments,arguments.Capacity);link.GetWorkingDirectory(directory,directory.Capacity);return new Shortcut{Target=target.ToString(),Arguments=arguments.ToString(),Directory=directory.ToString()};});}
+ static T WithShortcut<T>(string path,bool load,Func<IShellLinkW,T> action) {
+  object instance=null;
+  try {instance=Activator.CreateInstance(Type.GetTypeFromCLSID(new Guid("00021401-0000-0000-C000-000000000046"),true));if(load)((IPersistFile)instance).Load(path,0);return action((IShellLinkW)instance);}
+  finally {if(instance!=null && Marshal.IsComObject(instance))Marshal.FinalReleaseComObject(instance);}
  }
  static void WriteShortcut(string path,string executable) {
-  WithShortcut(path,delegate(object link) {Property(link,"TargetPath",executable);Property(link,"Arguments","--startup");Property(link,"WorkingDirectory",Path.GetDirectoryName(executable));Property(link,"Description","Anime Tracker");Property(link,"IconLocation",executable+",0");Property(link,"WindowStyle",1);link.GetType().InvokeMember("Save",BindingFlags.InvokeMethod,null,link,null);return true;});
+  WithShortcut(path,false,delegate(IShellLinkW link) {link.SetPath(executable);link.SetArguments("--startup");link.SetWorkingDirectory(Path.GetDirectoryName(executable));link.SetDescription("Anime Tracker");link.SetIconLocation(executable,0);link.SetShowCmd(1);((IPersistFile)link).Save(path,true);return true;});
  }
  internal sealed class StartupRegistration {
   readonly string folder,executable,runKey;
@@ -49,7 +72,7 @@ public static class AutoStart {
   }
  }
  internal static void Test(string root) {
-  string folder=Path.Combine(root,"startup"),program=Path.Combine(root,"Программа с пробелами"),keyPath="Software\\AnimeTracker.Tests\\Startup-"+Guid.NewGuid().ToString("N");Directory.CreateDirectory(program);Directory.CreateDirectory(folder);string exe=Path.Combine(program,"Anime Tracker.exe");File.WriteAllText(exe,"fixture");
+  string folder=Path.Combine(root,"startup"),program=Path.Combine(root,"Программа с пробелами 日本語"),keyPath="Software\\AnimeTracker.Tests\\Startup-"+Guid.NewGuid().ToString("N");Directory.CreateDirectory(program);Directory.CreateDirectory(folder);string exe=Path.Combine(program,"Anime Tracker.exe");File.WriteAllText(exe,"fixture");
   var registration=new StartupRegistration(folder,exe,keyPath);
   try {
    if(registration.Enabled)throw new Exception("Unexpected startup registration");var missingFolder=Path.Combine(root,"missing-startup");var fresh=new StartupRegistration(missingFolder,exe,keyPath);if(fresh.Enabled || Directory.Exists(missingFolder))throw new Exception("Reading startup created a missing folder");fresh.Set(true);if(!fresh.Enabled)throw new Exception("Missing startup folder was not created");fresh.Set(false);
