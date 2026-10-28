@@ -1,5 +1,6 @@
 src/AnimeTracker.Windows/App.cs
 src/AnimeTracker.Windows/DesktopHost.cs
+src/AnimeTracker.Windows/AutoStart.cs
 src/AnimeTracker.Windows/Catalog.cs
 src/AnimeTracker.Windows/MalImport.cs
 src/AnimeTracker.Core/MalImportTests.cs

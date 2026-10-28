@@ -79,11 +79,4 @@ public static class DesktopHost {
   return "attached="+(GetParent(h)==FindHost() && GetParent(h)!=IntPtr.Zero)+"; child="+((GetStyle(h,-16)&0x40000000)!=0)+"; visible="+IsWindowVisible(h)+"; minimized="+IsIconic(h)+"; aboveIcons="+(GetWindow(GetParent(h),5)==h)+"; layered="+((GetStyle(h,-20)&0x80000)!=0)+"; rect="+r.Left+","+r.Top+","+(r.Right-r.Left)+","+(r.Bottom-r.Top);
  }
 }
-public static class AutoStart {
- const string Key="Software\\Microsoft\\Windows\\CurrentVersion\\Run";
- const string Name="AnimeTracker";
- public static bool Enabled { get { using(var key=Registry.CurrentUser.OpenSubKey(Key)) { return key!=null && String.Equals(key.GetValue(Name) as string,Command,StringComparison.OrdinalIgnoreCase); } } }
- static string Command { get { return "\""+System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"AnimeTracker.exe")+"\" --startup"; } }
- public static void Set(bool enabled) { using(var key=Registry.CurrentUser.CreateSubKey(Key)) { if(enabled) key.SetValue(Name,Command,RegistryValueKind.String); else key.DeleteValue(Name,false); } }
-}
 }

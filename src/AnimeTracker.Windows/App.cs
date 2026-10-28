@@ -66,14 +66,17 @@ public partial class Tracker : Application {
   if (args.Contains("--top-export-test")) { VerifyTopExport(); return; }
   if (args.Contains("--import-test")) { try { File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"import-test.txt"),MalImportTests.Run()); } catch(Exception ex) { File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"import-test.txt"),"FAIL "+ex); Environment.ExitCode=1; } return; }
   if (args.Contains("--catalog-test")) { CatalogTest(); return; }
-  if (args.Contains("--enable-startup")) { AutoStart.Set(true); return; }
-  bool created; mutex = new System.Threading.Mutex(true,"Local\\AnimeTracker.Desktop",out created);
-  if (!created) { if(!args.Contains("--startup")) MessageBox.Show("Трекер уже запущен. Откройте его через значок в трее.","Anime Tracker"); return; }
-  try { var app = new Tracker(); app.ShutdownMode = ShutdownMode.OnExplicitShutdown; app.Run(); GC.KeepAlive(mutex); }
-  catch(Exception ex) { File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"startup-error.txt"),ex.ToString()); }
+  if (args.Contains("--enable-startup")) {try{AutoStart.Set(true);StartupDiagnostics.Write("autostart-registered");}catch(Exception ex){StartupDiagnostics.Write("registration-failed",ex);Environment.ExitCode=1;}return;}
+  StartupDiagnostics.Write(args.Contains("--startup")?"starting startup":"starting manual");
+  try {
+   bool created;mutex = new System.Threading.Mutex(true,"Local\\AnimeTracker.Desktop",out created);
+   if (!created) {StartupDiagnostics.Write("already-running");if(!args.Contains("--startup"))MessageBox.Show("Трекер уже запущен. Откройте его через значок в трее.","Anime Tracker");return;}
+   var app = new Tracker();app.ShutdownMode = ShutdownMode.OnExplicitShutdown;app.Run();GC.KeepAlive(mutex);
+  } catch(Exception ex) {StartupDiagnostics.Write("failed",ex);try{File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"startup-error.txt"),ex.ToString());}catch{}Environment.ExitCode=1;}
  }
  protected override void OnStartup(StartupEventArgs e) {
   base.OnStartup(e);
+  StartupDiagnostics.Write("initializing");
   Resources = (ResourceDictionary)XamlReader.Parse(@"<ResourceDictionary xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml'>
   <Style TargetType='Button'><Setter Property='Foreground' Value='#47361D'/><Setter Property='Background' Value='#EAD490'/><Setter Property='Padding' Value='10,7'/><Setter Property='Margin' Value='0,0,6,0'/><Setter Property='Cursor' Value='Hand'/><Setter Property='BorderThickness' Value='0'/><Setter Property='Template'><Setter.Value><ControlTemplate TargetType='Button'><Border x:Name='b' Background='{TemplateBinding Background}' CornerRadius='6' Padding='{TemplateBinding Padding}' RenderTransformOrigin='0.5,0.5'><Border.RenderTransform><ScaleTransform/></Border.RenderTransform><ContentPresenter HorizontalAlignment='Center' VerticalAlignment='Center'/></Border><ControlTemplate.Triggers><Trigger Property='IsMouseOver' Value='True'><Trigger.EnterActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName='b' Storyboard.TargetProperty='Opacity' To='0.82' Duration='0:0:0.16'/></Storyboard></BeginStoryboard></Trigger.EnterActions><Trigger.ExitActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName='b' Storyboard.TargetProperty='Opacity' To='1' Duration='0:0:0.22'/></Storyboard></BeginStoryboard></Trigger.ExitActions></Trigger><Trigger Property='IsPressed' Value='True'><Trigger.EnterActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName='b' Storyboard.TargetProperty='(UIElement.RenderTransform).(ScaleTransform.ScaleX)' To='0.96' Duration='0:0:0.08'/><DoubleAnimation Storyboard.TargetName='b' Storyboard.TargetProperty='(UIElement.RenderTransform).(ScaleTransform.ScaleY)' To='0.96' Duration='0:0:0.08'/></Storyboard></BeginStoryboard></Trigger.EnterActions><Trigger.ExitActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName='b' Storyboard.TargetProperty='(UIElement.RenderTransform).(ScaleTransform.ScaleX)' To='1' Duration='0:0:0.18'/><DoubleAnimation Storyboard.TargetName='b' Storyboard.TargetProperty='(UIElement.RenderTransform).(ScaleTransform.ScaleY)' To='1' Duration='0:0:0.18'/></Storyboard></BeginStoryboard></Trigger.ExitActions></Trigger><Trigger Property='IsEnabled' Value='False'><Setter TargetName='b' Property='Opacity' Value='0.4'/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
   <Style TargetType='TextBox'><Setter Property='Background' Value='#FFF8DF'/><Setter Property='Foreground' Value='#47361D'/><Setter Property='CaretBrush' Value='#47361D'/><Setter Property='BorderBrush' Value='#D6C18B'/><Setter Property='Padding' Value='10,8'/><Setter Property='FontSize' Value='14'/></Style>
@@ -83,14 +86,17 @@ public partial class Tracker : Application {
   var opened=LibraryStorage.Open(dataPath);library=opened.Library;storageBlocked=opened.ReadOnly;
   if(opened.Message.Length>0)MessageBox.Show(opened.Message,storageBlocked?"Ошибка загрузки":"Восстановление библиотеки");
   preferences=ViewPreferences.Load(viewPath); widgetOptions=WidgetOptions.Load(widgetOptionsPath);
+  StartupDiagnostics.Write("library-loaded");
   LoadWatchChoices();
   StartEpisodeUpdates();
   widgetHidden=!widgetOptions.Enabled; BuildWidget(); BuildTray(); if(!widgetHidden){widget.Show(); AttachDesktop();}
+  StartupDiagnostics.Write("tray-created");
   desktopTimer=new System.Windows.Threading.DispatcherTimer { Interval=TimeSpan.FromSeconds(3) };
   desktopTimer.Tick += delegate { EnsureWidget(); };
   desktopTimer.Start();
   if(e.Args.Contains("--library")||(!widgetOptions.Enabled&&!e.Args.Contains("--startup"))) OpenLibrary();
   if(e.Args.Contains("--verify")) Dispatcher.BeginInvoke(new Action(VerifyWidget),System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+  StartupDiagnostics.Write("running mode="+(e.Args.Contains("--startup")?"startup":"manual")+" library-open="+(full!=null)+" widget-enabled="+widgetOptions.Enabled);
  }
  async void VerifyWidget() {
   try {
@@ -449,7 +455,7 @@ public partial class Tracker : Application {
    var widgetTest=new Library(); widgetTest.Items.Add(older); widgetTest.Items.Add(recent);
    if(LatestAnime(widgetTest)!=recent) throw new Exception("Widget must show latest user change regardless of status");
    older.Updated=recent.Updated.AddMinutes(1); if(LatestAnime(widgetTest)!=older) throw new Exception("Widget follows user edits");
-   ViewPreferences.Test(dir);SettingsBackupTest(dir);LibraryStorageTests.Run(dir);
+   ViewPreferences.Test(dir);SettingsBackupTest(dir);LibraryStorageTests.Run(dir);AutoStart.Test(dir);StartupDiagnostics.Test(dir);
    var completion=new Anime { Watched=3,Total=12 };
    completion.SetProgress(3,12,"completed"); if(completion.Watched!=12 || completion.Status!="completed") throw new Exception("Completed fills known total");
    completion.SetProgress(5,0,"completed"); if(completion.Watched!=5) throw new Exception("Unknown total preserves progress");
