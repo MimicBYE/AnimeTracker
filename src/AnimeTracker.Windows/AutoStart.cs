@@ -16,7 +16,7 @@ public static class AutoStart {
  }
  internal static Shortcut ReadShortcut(string path) { return WithShortcut(path,delegate(object link) { return new Shortcut {Target=(string)Property(link,"TargetPath"),Arguments=(string)Property(link,"Arguments"),Directory=(string)Property(link,"WorkingDirectory")}; }); }
  static object Property(object link,string name) { return link.GetType().InvokeMember(name,BindingFlags.GetProperty,null,link,null); }
- static void Property(object link,string name,object value) { link.GetType().InvokeMember(name,BindingFlags.SetProperty,null,link,new[]{value}); }
+ static void Property(object link,string name,object value) {try{link.GetType().InvokeMember(name,BindingFlags.SetProperty,null,link,new[]{value});}catch(TargetInvocationException ex){throw new InvalidOperationException("Не удалось установить свойство ярлыка: "+name,ex);}}
  static T WithShortcut<T>(string path,Func<object,T> action) {
   object shell=null,link=null;
   try {var type=Type.GetTypeFromProgID("WScript.Shell",true);shell=Activator.CreateInstance(type);link=type.InvokeMember("CreateShortcut",BindingFlags.InvokeMethod,null,shell,new object[]{path});return action(link);}
