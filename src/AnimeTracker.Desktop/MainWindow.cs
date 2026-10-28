@@ -35,7 +35,7 @@ public sealed partial class MainWindow:Window
     public MainWindow(AppStore store,Func<Window,Task<string?>>? chooseMalFile=null)
     {
         this.chooseMalFile=chooseMalFile??(owner=>Paper.OpenFile(owner,"Импорт из MyAnimeList","*.xml","*.gz"));
-        this.store=store;covers=new Covers(store);Title="Anime Tracker · macOS";Width=1040;Height=800;MinWidth=850;MinHeight=520;WindowStartupLocation=WindowStartupLocation.CenterScreen;
+        this.store=store;covers=new Covers(store);Title="Anime Tracker · "+DesktopIntegration.Name;Width=1040;Height=800;MinWidth=850;MinHeight=520;WindowStartupLocation=WindowStartupLocation.CenterScreen;
         libraryRows.ItemTemplate=new FuncDataTemplate<Anime>((anime,_)=>anime==null?null:AnimeRow(anime));
         searchTimer.Tick+=(_,_)=>FlushPendingFilters();
         using(var icon=Avalonia.Platform.AssetLoader.Open(new Uri("avares://AnimeTracker/Assets/app.ico")))Icon=new WindowIcon(icon);
@@ -46,7 +46,7 @@ public sealed partial class MainWindow:Window
         var bottom=new Border{Padding=new Thickness(14,4),Child=message};Grid.SetRow(bottom,1);root.Children.Add(bottom);Content=root;
         tabs.ItemsSource=new[]{LibraryTab(),EveningTab(),CalendarTab(),SequelsTab(),PersonalTab(),GlobalTopTab()};
         store.Changed+=RefreshCommon;RefreshCommon();
-        Closing+=(_,e)=>{FlushPendingFilters();if(!App.CurrentApp.Quitting){e.Cancel=true;Hide();}};
+        Closing+=(_,e)=>{FlushPendingFilters();if(!App.CurrentApp.Quitting){e.Cancel=true;if(DesktopIntegration.CloseExits)Dispatcher.UIThread.Post(App.CurrentApp.Quit);else Hide();}};
         Closed+=(_,_)=>{searchTimer.Stop();store.Changed-=RefreshCommon;lifetime.Cancel();};
         KeyDown+=(_,e)=>{if((e.KeyModifiers.HasFlag(KeyModifiers.Meta)||e.KeyModifiers.HasFlag(KeyModifiers.Control))&&e.Key==Key.F){tabs.SelectedIndex=0;search.Focus();e.Handled=true;}};
     }
@@ -124,12 +124,13 @@ public sealed partial class MainWindow:Window
     }
     public async Task Settings()
     {
-        var enabled=new CheckBox{Content="Показывать виджет",IsChecked=store.Widget.Enabled};var style=Paper.Choice(new[]{"Бумага","Компактная полоска","Обложка с прогрессом"},store.Widget.Style,280);var startup=new CheckBox{Content="Запускать при входе в macOS",IsChecked=MacIntegration.AutoStartEnabled,IsEnabled=OperatingSystem.IsMacOS()};
+        var enabled=new CheckBox{Content="Показывать виджет",IsChecked=store.Widget.Enabled};var style=Paper.Choice(new[]{"Бумага","Компактная полоска","Обложка с прогрессом"},store.Widget.Style,280);var startup=new CheckBox{Content="Запускать при входе в систему",IsChecked=DesktopIntegration.AutoStartEnabled,IsEnabled=DesktopIntegration.AutoStartAvailable};
         var panel=Paper.Stack(Paper.Text("Настройки",28),Paper.Card(Paper.Stack(Paper.Text("Виджет и запуск",20),enabled,Paper.Field("Оформление виджета",style),startup)));var layout=new DockPanel();var dialog=Paper.Dialog(this,"Настройки",layout,680,590);
-        var footer=Paper.Actions(Paper.Primary(Paper.AsyncButton("Применить",()=>Act(()=>{store.SetWidget(store.Widget.Pinned,style.SelectedIndex,enabled.IsChecked==true);if(OperatingSystem.IsMacOS()&&startup.IsChecked!=MacIntegration.AutoStartEnabled)MacIntegration.SetAutoStart(startup.IsChecked==true);dialog.Close();}))),Paper.Button("Закрыть",()=>dialog.Close()));footer.Margin=new Thickness(0,14,0,0);DockPanel.SetDock(footer,Dock.Bottom);layout.Children.Add(footer);layout.Children.Add(Paper.Scroll(panel));
+        if(OperatingSystem.IsLinux())panel.Children.Add(Paper.Card(Paper.Stack(Paper.Text("Linux",20),Paper.Text("Виджет — отдельное окно. Его видимость при показе рабочего стола зависит от оболочки. Закрытие библиотеки завершает приложение; автозапуск открывает библиотеку и работает без трея.",13,Paper.Muted),Paper.AsyncButton("Добавить в меню приложений",async()=>{DesktopIntegration.InstallMenu();await Paper.Message(dialog,"Ярлык добавлен в меню. После перемещения папки приложения создайте его заново.");}))));
+        var footer=Paper.Actions(Paper.Primary(Paper.AsyncButton("Применить",()=>Act(()=>{store.SetWidget(store.Widget.Pinned,style.SelectedIndex,enabled.IsChecked==true);if(DesktopIntegration.AutoStartAvailable&&(startup.IsChecked==true||startup.IsChecked!=DesktopIntegration.AutoStartEnabled))DesktopIntegration.SetAutoStart(startup.IsChecked==true);dialog.Close();}))),Paper.Button("Закрыть",()=>dialog.Close()));footer.Margin=new Thickness(0,14,0,0);DockPanel.SetDock(footer,Dock.Bottom);layout.Children.Add(footer);layout.Children.Add(Paper.Scroll(panel));
         var import=Paper.AsyncButton("Импорт XML из MyAnimeList",()=>ImportMalDialog(dialog));import.IsEnabled=!store.ReadOnly;
         var data=Paper.Stack(Paper.Text("Данные и резервные копии",20),Paper.Text("Импортируйте список MyAnimeList или перенесите папку data с Windows. Перед заменой данных сохраняется резервная копия.",13,Paper.Muted),Paper.Actions(import));
-        data.Children.Add(Paper.Actions(Paper.Button("Открыть папку данных",()=>MacIntegration.OpenFolder(store.Root)),Paper.AsyncButton("Перенести папку из Windows",async()=>{
+        data.Children.Add(Paper.Actions(Paper.Button("Открыть папку данных",()=>DesktopIntegration.OpenFolder(store.Root)),Paper.AsyncButton("Перенести папку из Windows",async()=>{
             var directories=await dialog.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions{Title="Выберите папку data из Windows",AllowMultiple=false});var source=directories.FirstOrDefault()?.TryGetLocalPath();if(source==null)return;var imported=AnimeTracker.Library.Load(Path.Combine(source,"library.xml"));if(!File.Exists(Path.Combine(source,"library.xml")))throw new IOException("В папке нет library.xml.");if(await Paper.Message(dialog,"Будет перенесено аниме: "+imported.Items.Count+". Текущая папка данных будет сохранена отдельной резервной копией.","Перенос данных",true)){var backup=store.ImportWindowsFolder(source);await Paper.Message(dialog,"Готово. Предыдущие данные: "+backup);}
         }),Paper.AsyncButton("Резервная копия ZIP",async()=>{var target=await Paper.SaveFile(dialog,"Сохранить резервную копию","AnimeTracker-backup.zip","zip");if(target!=null){store.ExportBackup(target);await Paper.Message(dialog,"Резервная копия сохранена.");}})));
         panel.Children.Add(Paper.Card(data));

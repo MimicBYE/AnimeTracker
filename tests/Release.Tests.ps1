@@ -16,6 +16,22 @@ function Add-Entry($Zip,[string]$Name,[byte[]]$Bytes,[bool]$Executable=$false){
     $entry=$Zip.CreateEntry($Name);$entry.ExternalAttributes=if($Executable){0x81ed -shl 16}else{0x81a4 -shl 16}
     $stream=$entry.Open();try{$stream.Write($Bytes,0,$Bytes.Length)}finally{$stream.Dispose()}
 }
+function New-LinuxFixture([string]$Directory,[string]$Version=$base,[string]$Channel='stable',[string]$Extra='',[switch]$NoExecute,[switch]$WrongArchitecture){
+    Add-Type -AssemblyName System.Formats.Tar
+    $path=Join-Path $Directory "AnimeTracker-$Version-linux-x64.tar.gz"
+    $file=[IO.File]::Create($path);$gzip=[IO.Compression.GZipStream]::new($file,[IO.Compression.CompressionLevel]::Optimal);$writer=[System.Formats.Tar.TarWriter]::new($gzip)
+    $header=[byte[]]::new(64);$header[0]=127;$header[1]=69;$header[2]=76;$header[3]=70;$header[4]=2;$header[5]=1;$header[18]=if($WrongArchitecture){40}else{62}
+    try {
+        $names=@('AnimeTracker','AnimeTracker.dll','AnimeTracker.runtimeconfig.json','BUILD-INFO.json','LINUX.md','app.png','THIRD-PARTY-NOTICES.md');if($Extra){$names+=$Extra}
+        foreach($name in $names){
+            $entryName=if($name.StartsWith('../')){$name}else{"AnimeTracker-$Version-linux-x64/$name"}
+            $entry=[System.Formats.Tar.UstarTarEntry]::new([System.Formats.Tar.TarEntryType]::RegularFile,$entryName)
+            $entry.Mode=[IO.UnixFileMode]$(if($name -eq 'AnimeTracker' -and !$NoExecute){493}else{420})
+            $bytes=if($name -eq 'AnimeTracker'){$header}elseif($name -eq 'BUILD-INFO.json'){[Text.Encoding]::UTF8.GetBytes(((New-BuildInfo $base $Version $Channel $sha)|ConvertTo-Json))}else{[Text.Encoding]::UTF8.GetBytes('fixture')}
+            $data=[IO.MemoryStream]::new([byte[]]$bytes);try{$entry.DataStream=$data;$writer.WriteEntry($entry)}finally{$data.Dispose()}
+        }
+    }finally{$writer.Dispose();$gzip.Dispose();$file.Dispose()}
+}
 function New-Packages([string]$Directory,[string]$Version=$base,[string]$Channel='stable'){
     $null=New-Item -ItemType Directory -Path $Directory -Force
     $info=[Text.Encoding]::UTF8.GetBytes(((New-BuildInfo $base $Version $Channel $sha)|ConvertTo-Json))
@@ -29,6 +45,7 @@ function New-Packages([string]$Directory,[string]$Version=$base,[string]$Channel
             if($kind -eq 'macos-arm64'){Add-Entry $zip 'Anime Tracker.app/Contents/MacOS/AnimeTracker' ([byte[]]@(0xcf,0xfa,0xed,0xfe,0x0c,0,0,1)) $true}
         }finally{$zip.Dispose()}
     }
+    New-LinuxFixture $Directory $Version $Channel
 }
 try{
     Test-RepositoryVersion $root
@@ -79,8 +96,18 @@ try{
     $zip=[IO.Compression.ZipFile]::Open((Join-Path $noexec "AnimeTracker-$base-macos-arm64.zip"),[IO.Compression.ZipArchiveMode]::Update)
     try{$zip.GetEntry('Anime Tracker.app/Contents/MacOS/AnimeTracker').ExternalAttributes=0x81a4 -shl 16}finally{$zip.Dispose()}
     Reject {Test-ReleasePackages $noexec $base $base 'stable' $sha} 'Non-executable Mac app accepted'
+    foreach($case in @('linux-mode','linux-arch','linux-private','linux-traversal')){
+        $directory=Join-Path $scratch $case;New-Packages $directory
+        switch($case){
+            'linux-mode'{New-LinuxFixture $directory -NoExecute}
+            'linux-arch'{New-LinuxFixture $directory -WrongArchitecture}
+            'linux-private'{New-LinuxFixture $directory -Extra 'data/library.xml'}
+            'linux-traversal'{New-LinuxFixture $directory -Extra '../outside'}
+        }
+        Reject {Test-ReleasePackages $directory $base $base 'stable' $sha} "Unsafe Linux package accepted: $case"
+    }
     $development=Join-Path $scratch 'development';New-Packages $development $dev.PackageVersion 'dev';Test-ReleasePackages $development $base $dev.PackageVersion 'dev' $sha
-    Write-Output 'PASS: release channels, PR/manual guards, immutable tags/assets, source privacy, version synchronization, provenance, stale ZIPs, path traversal, Mac permissions and development packages.'
+    Write-Output 'PASS: four archives, release guards, immutable assets, provenance/privacy, ZIP/tar traversal, Linux ELF/permissions and Mac permissions.'
 }finally{
     $cleanup=[IO.Path]::GetFullPath($scratch)
     if(!$cleanup.StartsWith($artifacts+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase)){throw 'Cleanup path escaped test artifacts'}

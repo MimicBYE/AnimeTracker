@@ -37,7 +37,7 @@ internal static class SettingsFlowTests
         var settingsTask=window.Settings();var dialog=window.OwnedWindows.Single();dialog.Opacity=0;dialog.ShowInTaskbar=false;Dispatcher.UIThread.RunJobs();dialog.UpdateLayout();
         try
         {
-            var controls=dialog.GetLogicalDescendants().ToArray();var style=controls.OfType<ComboBox>().Single();var enabled=controls.OfType<CheckBox>().Single(c=>c.Content as string=="Показывать виджет");var startup=controls.OfType<CheckBox>().Single(c=>c.Content as string=="Запускать при входе в macOS");bool? initialStartup=startup.IsChecked;
+            var controls=dialog.GetLogicalDescendants().ToArray();var style=controls.OfType<ComboBox>().Single();var enabled=controls.OfType<CheckBox>().Single(c=>c.Content as string=="Показывать виджет");var startup=controls.OfType<CheckBox>().Single(c=>c.Content as string=="Запускать при входе в систему");bool? initialStartup=startup.IsChecked;
             style.SelectedIndex=2;enabled.IsChecked=false;startup.IsChecked=initialStartup!=true;
             var import=Button(dialog,"Импорт XML из MyAnimeList");
             void DraftIntact()

@@ -63,11 +63,20 @@ jobs:
       - name: Release infrastructure tests
         shell: pwsh
         run: ./tests/Release.Tests.ps1
+      - name: Install Linux UI test libraries
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y xvfb dbus-x11 libice6 libsm6 libfontconfig1 libx11-6 libxext6 libxrandr2 libxcursor1 libxi6 libxrender1 libgl1 libegl1 libgtk-3-0t64 libglib2.0-bin desktop-file-utils
       - name: Domain, import, migration and cover tests
-        run: dotnet run --project tests/AnimeTracker.CoreTests -c Release
+        shell: pwsh
+        run: |
+          if ($IsLinux) { xvfb-run -a dbus-run-session -- dotnet run --project tests/AnimeTracker.CoreTests -c Release }
+          else { dotnet run --project tests/AnimeTracker.CoreTests -c Release }
       - name: Desktop search, persistence and virtualized viewport
         if: runner.os != 'Linux'
         run: dotnet run --project tests/AnimeTracker.DesktopTests -c Release
+      - name: Linux desktop scenarios under Xvfb
+        if: runner.os == 'Linux'
+        run: xvfb-run -a -s '-screen 0 1920x1080x24' dbus-run-session -- dotnet run --project tests/AnimeTracker.DesktopTests -c Release
 
   windows:
     name: Windows package
@@ -118,9 +127,36 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  linux:
+    name: Linux package
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      PACKAGE_VERSION: ${{ needs.plan.outputs.package-version }}
+      RELEASE_CHANNEL: ${{ needs.plan.outputs.channel }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
+        with:
+          global-json-file: global.json
+      - name: Install X11 test environment
+        run: sudo apt-get update && sudo apt-get install -y xvfb dbus-x11 libice6 libsm6 libfontconfig1 libx11-6 libxext6 libxrandr2 libxcursor1 libxi6 libxrender1 libgl1 libegl1 libgtk-3-0t64 libglib2.0-bin desktop-file-utils
+      - name: Build and run extracted Linux x64 package
+        run: xvfb-run -a -s '-screen 0 1920x1080x24' dbus-run-session -- pwsh -File ./scripts/build-linux.ps1 -PackageVersion "$PACKAGE_VERSION" -Channel "$RELEASE_CHANNEL" -Commit "$GITHUB_SHA" -SmokeTest
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: release-${{ github.run_id }}-${{ github.run_attempt }}-linux
+          path: dist/linux/*.tar.gz
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+
   verify:
     name: Verify release bundle
-    needs: [plan, security, core, windows, macos]
+    needs: [plan, security, core, windows, macos, linux]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -134,7 +170,7 @@ jobs:
         with:
           pattern: release-${{ github.run_id }}-${{ github.run_attempt }}-*
           path: artifacts/downloaded
-      - name: Verify both platforms and write shared checksums
+      - name: Verify three platforms and write shared checksums
         shell: pwsh
         run: ./scripts/prepare-release.ps1 -InputDirectory artifacts/downloaded -OutputDirectory dist/release -PackageVersion $env:PACKAGE_VERSION -Channel $env:RELEASE_CHANNEL -Commit $env:GITHUB_SHA
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
