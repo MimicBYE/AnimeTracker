@@ -18,12 +18,12 @@
 
 1. **Release plan:** проверяет согласованность версии в Windows, обоих проектах .NET и macOS; выбирает канал и номер пакета.
 2. **Core:** на Ubuntu, Windows и macOS запускает тесты инфраструктуры и общей логики. Проверяются XML/GZIP-импорт, миграция библиотеки, статусы и серии, фильтры, заметки, арки, рекомендации и загрузка обложек через локальные HTTP-заглушки.
-   На Windows/macOS также запускается `AnimeTracker.DesktopTests`: синтетические библиотеки 1000/5000, debounce/сохранение при закрытии, ограниченный viewport и прокрутка в прозрачном нативном окне. Linux UI эта проверка не заявляет. Выводит диагностические времена обработчиков; временные пороги не являются условием CI и не заменяют ручную проверку FPS/Mac UI.
+   На Windows/macOS также запускается `AnimeTracker.DesktopTests`: синтетические библиотеки 1000/5000, debounce/сохранение при закрытии, ограниченный viewport и прокрутка в прозрачном нативном окне. На Linux те же DesktopTests выполняются под Xvfb/DBus; это не ручной прогон GNOME/Cinnamon/KDE. Выводит диагностические времена обработчиков; временные пороги не являются условием CI и не заменяют ручную проверку FPS/Mac UI.
 3. **Windows package:** компилирует WPF, проверяет упакованный EXE, импорт и повторную сборку из распакованного source ZIP.
 4. **macOS package:** на macOS собирает самостоятельное ARM64-приложение, применяет локальную ad-hoc подпись и проверяет её. Архив сохраняет Unix-права запуска.
 5. **Dependency audit:** проверяет прямые и транзитивные NuGet-зависимости всех SDK-проектов. High/Critical, неизвестный формат отчёта и недоступная база блокируют проверку. JSON-отчёт сохраняется как Actions artifact. Эта же reusable workflow запускается еженедельно и вручную.
-6. **Verify release bundle:** только после тестов, аудита и упаковки получает артефакты этого запуска и попытки, проверяет три архива, одинаковый коммит/версию/канал, отсутствие личных данных, структуру Mac-пакета и права 0755. Создаёт общий SHA-256.
-7. **Publish release:** только после всех предыдущих проверок создаёт черновик, загружает Windows, macOS, source ZIP и `SHA256SUMS.txt`, сравнивает размеры и SHA-256 с ответами GitHub и публикует комплект целиком.
+6. **Verify release bundle:** только после тестов, аудита и упаковки получает артефакты этого запуска и попытки, проверяет четыре архива (Windows/macOS/Linux/source), одинаковый коммит/версию/канал, отсутствие личных данных, структуру Mac-пакета и права 0755. Создаёт общий SHA-256.
+7. **Publish release:** только после всех предыдущих проверок создаёт черновик, загружает Windows/macOS/source ZIP и Linux tar.gz и `SHA256SUMS.txt`, сравнивает размеры и SHA-256 с ответами GitHub и публикует комплект целиком.
 
 Отдельный **Dependency review** проверяет изменения зависимостей в PR и отклоняет новые High/Critical во всех scopes. Dependabot еженедельно открывает PR обновлений NuGet и GitHub Actions в `dev`; security updates GitHub могут направляться в основную ветку. Auto-merge не включён. Политика, приватный канал сообщения об уязвимостях и границы проверки описаны в [SECURITY.md](../SECURITY.md).
 
@@ -42,7 +42,7 @@
 1. Примите проверенные issue-ветки в `dev`.
 2. Обновите версию через `scripts/set-version.ps1`, затем описание релиза и пользовательскую документацию.
 3. Создайте PR `dev` → `main`, дождитесь CI и review.
-4. После merge push в `main` автоматически соберёт и опубликует новый номер обеих платформ одним релизом.
+4. После merge push в `main` автоматически соберёт и опубликует новый номер трёх платформ одним релизом.
 
 Для первоначального внедрения PR по issue #1 направлен в `main`. `dev` создаётся от текущей `main`; после merge инфраструктуры обновите её из `main`. До этого в `dev` не будет нового workflow.
 
@@ -68,3 +68,5 @@ CI не подтверждает удобство UI, работу рабоче�
 - [События и permissions GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax).
 - [Стандартные runners и архитектуры](https://docs.github.com/en/actions/how-tos/write-workflows/choose-where-workflows-run/choose-the-runner-for-a-job).
 - [actions/checkout](https://github.com/actions/checkout), [actions/setup-dotnet](https://github.com/actions/setup-dotnet), [actions/upload-artifact](https://github.com/actions/upload-artifact), [actions/download-artifact](https://github.com/actions/download-artifact).
+
+Linux package (AT-22) собирается на Ubuntu 24.04: ELF x64/0755, проверка tar/provenance, запуск распакованного приложения без трея, +1 и перезапуск под Xvfb. Verify release bundle зависит от Linux package; прежние девять обязательных contexts сохранены, отдельного изменения branch protection нет. Нативные logout/login, GNOME/Cinnamon/KDE и DPI этим job не подтверждаются.

@@ -17,6 +17,7 @@ public sealed class MalImportResult {
 public partial class TrackerService {
  readonly ICatalogSource catalog;
  readonly Func<DateTime> utcNow;
+ readonly bool defaultWidgetEnabled;
  int generation;
  readonly SemaphoreSlim catalogGate=new SemaphoreSlim(1,1);
  public TrackerFiles Files {get;private set;}
@@ -36,18 +37,19 @@ public partial class TrackerService {
  public bool ArcsBlocked {get;private set;}
  public event Action Changed;
  public TrackerService(string root) : this(new TrackerFiles(root),new ShikimoriCatalogSource(),()=>DateTime.UtcNow) {}
- public TrackerService(TrackerFiles files,ICatalogSource catalog,Func<DateTime> utcNow) {
+ public TrackerService(TrackerFiles files,ICatalogSource catalog,Func<DateTime> utcNow,bool defaultWidgetEnabled=true) {
   if(files==null || catalog==null || utcNow==null)throw new ArgumentNullException();
-  Files=files;this.catalog=catalog;this.utcNow=utcNow;Reload();
+  Files=files;this.catalog=catalog;this.utcNow=utcNow;this.defaultWidgetEnabled=defaultWidgetEnabled;Reload();
  }
  public string FilePath(string name) {return Files.PathFor(name);}
  public void Notify() {if(Changed!=null)Changed();}
  public void Reload() {
-  generation++;Directory.CreateDirectory(Root);Error="";ReadOnly=ChoicesBlocked=ArcsBlocked=false;
+  generation++;foreach(var root in Files.Roots)Directory.CreateDirectory(root);Error="";ReadOnly=ChoicesBlocked=ArcsBlocked=false;
   var opened=LibraryStorage.Open(LibraryPath);Library=opened.Library;ReadOnly=opened.ReadOnly;Error=opened.Message;
   try{Choices=WatchChoices.Load(Files.Choices);}catch(Exception e){Choices=new WatchChoices();ChoicesBlocked=true;Error+=" "+e.Message;}
   try{Arcs=ArcData.Load(Files.Arcs);}catch(Exception e){Arcs=new List<AnimeArc>();ArcsBlocked=true;Error+=" Не удалось прочитать арки: "+e.Message;}
-  View=ViewPreferences.Load(Files.View);Widget=WidgetOptions.Load(Files.Widget);Order=PersonalOrder.Load(Files.Order);Schedule=CalendarNotes.Load(Files.Schedule);Metadata=ReadMetadata(Files.Metadata);Notify();
+  View=ViewPreferences.Load(Files.View);Widget=WidgetOptions.Load(Files.Widget);if(!File.Exists(Files.Widget)&&!File.Exists(Files.Widget+".bak"))Widget.Enabled=defaultWidgetEnabled;
+  Order=PersonalOrder.Load(Files.Order);Schedule=CalendarNotes.Load(Files.Schedule);Metadata=ReadMetadata(Files.Metadata);Notify();
  }
  void Writable() {if(ReadOnly)throw new InvalidOperationException(Error);}
  public void SaveView() {View.Save(Files.View);}

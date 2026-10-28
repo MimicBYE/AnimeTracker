@@ -6,8 +6,9 @@ namespace AnimeTracker.Desktop;
 public sealed class AppStore : TrackerService
 {
     public int ModalDepth { get; set; }
-    public AppStore(string root) : base(root) { }
-    public static string DefaultRoot() => OperatingSystem.IsMacOS()
+    public AppStore(string root) : this(new TrackerFiles(root)) { }
+    public AppStore(TrackerFiles files) : base(files,new ShikimoriCatalogSource(),()=>DateTime.UtcNow,!OperatingSystem.IsLinux()) { }
+    public static string DefaultRoot() => OperatingSystem.IsLinux()?LinuxPaths.Default().Root:OperatingSystem.IsMacOS()
         ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Application Support", "AnimeTracker")
         : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AnimeTracker.Port");
     public Task RefreshEpisodes(bool force, CancellationToken token) => base.RefreshEpisodes(force, token, () => ModalDepth == 0);

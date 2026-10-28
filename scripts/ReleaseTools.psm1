@@ -70,7 +70,7 @@ function Get-SourceFiles {
         if (!(Test-Path -LiteralPath $path)) { continue }
         foreach ($file in Get-ChildItem -LiteralPath $path -File -Recurse -Force) {
             $relative = $file.FullName.Substring($rootPath.Length+1).Replace('\','/')
-            $releaseMedia = $relative.StartsWith('docs/media/',[StringComparison]::Ordinal) -and $file.Extension -in @('.png','.mp4')
+            $releaseMedia = ($relative.StartsWith('docs/media/',[StringComparison]::Ordinal) -and $file.Extension -in @('.png','.mp4')) -or $relative -eq 'src/AnimeTracker.Desktop/Assets/app.png'
             if ($relative -notmatch $blocked -and ($file.Extension -in $extensions -or $releaseMedia) -and ($file.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) { $names += $relative }
         }
     }
@@ -87,9 +87,9 @@ function New-BuildInfo {
 function Get-ReleaseAssets {
     param([Parameter(Mandatory)][string]$Directory,[Parameter(Mandatory)][string]$PackageVersion)
     if ($PackageVersion -notmatch '^\d+\.\d+(\.\d+)?(-dev\.[1-9]\d*)?$') { throw 'Invalid package version.' }
-    $expected = @("AnimeTracker-$PackageVersion-windows-x64.zip","AnimeTracker-$PackageVersion-macos-arm64.zip","AnimeTracker-$PackageVersion-source.zip")
-    $actual = @(Get-ChildItem -LiteralPath $Directory -Filter '*.zip' -File | Select-Object -ExpandProperty Name)
-    if (@(Compare-Object ($expected|Sort-Object) ($actual|Sort-Object)).Count) { throw 'Release must contain exactly the Windows, macOS and source ZIPs for one package version.' }
+    $expected = @("AnimeTracker-$PackageVersion-windows-x64.zip","AnimeTracker-$PackageVersion-macos-arm64.zip","AnimeTracker-$PackageVersion-linux-x64.tar.gz","AnimeTracker-$PackageVersion-source.zip")
+    $actual = @(Get-ChildItem -LiteralPath $Directory -File | Where-Object {$_.Name.EndsWith('.zip') -or $_.Name.EndsWith('.tar.gz')} | Select-Object -ExpandProperty Name)
+    if (@(Compare-Object ($expected|Sort-Object) ($actual|Sort-Object)).Count) { throw 'Release must contain exactly Windows, macOS, Linux and source archives for one package version.' }
     return @($expected | ForEach-Object { $file=Get-Item -LiteralPath (Join-Path $Directory $_); [pscustomobject]@{Name=$file.Name;Path=$file.FullName;Size=$file.Length;Sha256=(Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()} })
 }
 
@@ -99,6 +99,7 @@ function Test-ReleasePackages {
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $blocked='(^|/)(data|covers|imports|bin|obj|artifacts|\.git|\.tools)(/|$)|(^|/)(library|watch-choices|widget-settings|view-settings|personal-order|arcs)\.xml$|(^|/)\.env($|\.)|\.(pfx|p12|pem|key|pdb|tmp|bak)$'
     foreach($asset in Get-ReleaseAssets $Directory $PackageVersion) {
+        if($asset.Name.EndsWith('-linux-x64.tar.gz')){Import-Module (Join-Path $PSScriptRoot 'LinuxPackage.psm1') -Force;Test-LinuxPackage $asset.Path $BaseVersion $PackageVersion $Channel $Commit;continue}
         $zip=[IO.Compression.ZipFile]::OpenRead($asset.Path)
         try {
             $prefix=if($asset.Name.EndsWith('-windows-x64.zip')){"AnimeTracker-$PackageVersion-windows-x64/"}elseif($asset.Name.EndsWith('-source.zip')){"AnimeTracker-$PackageVersion-source/"}else{''}

@@ -9,6 +9,7 @@ try
     var library = new Library(); library.Items.Add(anime); var path = Path.Combine(root, "library.xml"); library.Save(path);
     var copy = Library.Load(path).Items.Single(); if (copy.Notes != anime.Notes || copy.Id != anime.Id || copy.MalId != 21 || copy.Score != 8 || copy.Watched != 4) throw new Exception("Cross-platform XML roundtrip");
     PortTests.Run(root);
+    await LinuxPlatformTests.Run(root);
     LibraryStorageTests.Run(root);
     await TrackerServiceTests.Run(root);
     Console.WriteLine("PASS: shared application commands, persisted notifications, failed writes, current-state MAL merge, catalog batching/cancellation/overlap/stale responses and refresh retry");

@@ -19,11 +19,12 @@ public sealed class WidgetWindow:Window
     readonly Border surface=new(){Background=Brush.Parse("#F5E5A6"),BorderBrush=Brush.Parse("#CFB06F"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(6,6,16,6),Padding=new Thickness(13,10)};
     bool expanded,pressed,dragged;
     PixelPoint initialPointer,initialPosition;
+    string PositionPath=>store.FilePath(OperatingSystem.IsLinux()?"linux-widget-position.xml":"mac-widget-position.xml");
     public WidgetWindow(AppStore store)
     {
         this.store=store;covers=new Covers(store);Title="Anime Tracker · виджет";WindowDecorations=Avalonia.Controls.WindowDecorations.None;CanResize=false;ShowInTaskbar=false;ShowActivated=false;Background=Brush.Parse("#F5E5A6");Content=surface;
         store.Changed+=ApplyPreference;Render();clicks.Tick+=(_,_)=>{clicks.Stop();expanded=!expanded;Render();};
-        Opened+=(_,_)=>{RestorePosition();MacIntegration.AttachToDesktop(this);};
+        Opened+=(_,_)=>{RestorePosition();DesktopIntegration.AttachWidget(this);};
         Closing+=(_,e)=>{if(!App.CurrentApp.Quitting){e.Cancel=true;Hide();}};
         Closed+=(_,_)=>{clicks.Stop();store.Changed-=ApplyPreference;lifetime.Cancel();};
         surface.PointerPressed+=(_,e)=>{
@@ -35,10 +36,10 @@ public sealed class WidgetWindow:Window
         surface.PointerReleased+=(_,e)=>{if(!pressed)return;pressed=false;e.Pointer.Capture(null);if(dragged)SavePosition();else{clicks.Stop();clicks.Start();}e.Handled=true;};
         surface.PointerCaptureLost+=(_,_)=>pressed=false;
     }
-    void ApplyPreference(){Render();if(store.Widget.Enabled){if(!IsVisible){Show();MacIntegration.AttachToDesktop(this);}}else Hide();}
+    void ApplyPreference(){Render();if(store.Widget.Enabled){if(!IsVisible){Show();DesktopIntegration.AttachWidget(this);}}else Hide();}
     void ClampPosition(){var screen=Screens.ScreenFromWindow(this)??Screens.Primary;if(screen==null)return;var area=screen.WorkingArea;int width=(int)Math.Ceiling(Width*RenderScaling),height=(int)Math.Ceiling(Height*RenderScaling);Position=new PixelPoint(Math.Clamp(Position.X,area.X,Math.Max(area.X,area.Right-width)),Math.Clamp(Position.Y,area.Y,Math.Max(area.Y,area.Bottom-height)));}
-    void RestorePosition(){try{var x=XElement.Load(store.FilePath("mac-widget-position.xml"));Position=new PixelPoint((int)x.Attribute("x")!,(int)x.Attribute("y")!);}catch{var screen=Screens.Primary;if(screen!=null)Position=new PixelPoint(screen.WorkingArea.Right-(int)(Width*RenderScaling)-30,screen.WorkingArea.Y+70);}ClampPosition();}
-    void SavePosition(){try{new XElement("position",new XAttribute("x",Position.X),new XAttribute("y",Position.Y)).Save(store.FilePath("mac-widget-position.xml.tmp"));File.Move(store.FilePath("mac-widget-position.xml.tmp"),store.FilePath("mac-widget-position.xml"),true);}catch{}}
+    void RestorePosition(){try{var x=XElement.Load(PositionPath);Position=new PixelPoint((int)x.Attribute("x")!,(int)x.Attribute("y")!);}catch{var screen=Screens.Primary;if(screen!=null)Position=new PixelPoint(screen.WorkingArea.Right-(int)(Width*RenderScaling)-30,screen.WorkingArea.Y+70);}ClampPosition();}
+    void SavePosition(){try{new XElement("position",new XAttribute("x",Position.X),new XAttribute("y",Position.Y)).Save(PositionPath+".tmp");File.Move(PositionPath+".tmp",PositionPath,true);}catch{}}
     async Task Safe(Action action){try{action();}catch(Exception e){App.CurrentApp.OpenLibrary();await Paper.Message(App.CurrentApp.LibraryWindow,e.Message);}}
     void Render()
     {
