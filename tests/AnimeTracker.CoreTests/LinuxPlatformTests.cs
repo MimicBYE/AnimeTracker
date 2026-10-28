@@ -27,8 +27,10 @@ static class LinuxPlatformTests
         var brokenFiles=Split(root,"rollback");var broken=new TrackerService(brokenFiles,new ShikimoriCatalogSource(),()=>DateTime.UtcNow,false);var kept=broken.AddManual("Keep me");string original=File.ReadAllText(broken.LibraryPath);Directory.CreateDirectory(brokenFiles.Widget);
         bool failed=false;try{broken.ImportWindowsFolder(source.Root);}catch(IOException){failed=true;}catch(UnauthorizedAccessException){failed=true;}
         Check(failed&&File.ReadAllText(broken.LibraryPath)==original&&broken.Library.Items.Single()==kept,"multi-root rollback lost library");
+        Directory.CreateDirectory(source.FilePath("imports"));File.WriteAllText(source.FilePath("imports/original.xml"),"original export");
         var migratedFiles=Split(root,"migrate");LinuxPaths.Prepare(migratedFiles);var migration=LinuxPaths.MigrateLegacy(migratedFiles,source.Root);
         Check(migration!=null&&Library.Load(migratedFiles.Library).Items.Single().Id==incoming.Id&&File.Exists(source.LibraryPath)&&LinuxPaths.MigrateLegacy(migratedFiles,source.Root)==null,"legacy migration not safe/idempotent");
+        Check(File.Exists(migratedFiles.PathFor("imports/original.xml"))&&File.Exists(migratedFiles.Library+".bak"),"legacy migration lost import history/backups");
         using(var lease=DataFolderLock.TryAcquire(files.Root)){Check(lease!=null&&DataFolderLock.TryAcquire(files.Root)==null,"second owner acquired data");DataFolderLock.RequestOpen(files.Root);Check(!files.ExistingFiles().ContainsKey(".instance.lock")&&!files.ExistingFiles().ContainsKey(".open-request"),"runtime lock/request entered backup");}
         using(var next=DataFolderLock.TryAcquire(files.Root))Check(next!=null,"owner lock not released");
         var flat=new TrackerService(Path.Combine(root,"locked-flat"));flat.AddManual("Before import");using(var lease=DataFolderLock.TryAcquire(flat.Root)){flat.ImportWindowsFolder(source.Root);Check(DataFolderLock.TryAcquire(flat.Root)==null,"folder import moved the lock inode");}

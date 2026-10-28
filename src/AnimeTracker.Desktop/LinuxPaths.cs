@@ -29,6 +29,6 @@ public static class LinuxPaths
         if(File.Exists(files.Library)||File.Exists(files.Library+".bak")||!File.Exists(Path.Combine(legacy,"library.xml")))return null;
         if(files.ExistingFiles().Count>0)throw new IOException("Обнаружены старые и новые данные. Перенесите папку вручную через настройки: "+legacy);
         Library.Load(Path.Combine(legacy,"library.xml"));
-        return new TrackerService(files,new ShikimoriCatalogSource(),()=>DateTime.UtcNow,false).ImportWindowsFolder(legacy);
+        return new TrackerService(files,new ShikimoriCatalogSource(),()=>DateTime.UtcNow,false).ImportFolder(legacy,true);
     }
 }

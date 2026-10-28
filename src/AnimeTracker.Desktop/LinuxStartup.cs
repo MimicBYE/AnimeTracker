@@ -27,7 +27,9 @@ public sealed class LinuxStartup
         if(executable.Contains('='))throw new ArgumentException("Для ярлыка переместите приложение в папку без знака = в пути.");
         string args=startup?" --startup":"";
         if(dataDirectory!=null)args+=" --data-dir "+QuoteArgument(Path.GetFullPath(dataDirectory));
-        return "[Desktop Entry]\nType=Application\nVersion=1.0\nName=Anime Tracker\nComment=Anime library and episode tracker\nExec="+QuoteArgument(executable)+args+"\nTryExec="+Value(executable)+"\nIcon="+Value(Path.Combine(Path.GetDirectoryName(executable)!,"app.png"))+"\nTerminal=false\nCategories=AudioVideo;\nStartupWMClass=AnimeTracker\n";
+        // GIO probes argv[0] before expanding %% to %. A fixed env launcher
+        // keeps executable paths containing a literal percent valid, without a shell.
+        return "[Desktop Entry]\nType=Application\nVersion=1.0\nName=Anime Tracker\nComment=Anime library and episode tracker\nExec=/usr/bin/env -- "+QuoteArgument(executable)+args+"\nTryExec="+Value(executable)+"\nIcon="+Value(Path.Combine(Path.GetDirectoryName(executable)!,"app.png"))+"\nTerminal=false\nCategories=AudioVideo;\nStartupWMClass=AnimeTracker\n";
     }
     public bool Enabled=>File.Exists(EntryPath)&&File.ReadAllText(EntryPath)==Entry(true);
     public void Set(bool enabled)
@@ -57,7 +59,7 @@ public sealed class DataFolderLock : IDisposable
     {
         Directory.CreateDirectory(root);
         try{return new DataFolderLock(new FileStream(Path.Combine(root,".instance.lock"),FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None));}
-        catch(IOException e) when((e.HResult&0xffff) is 11 or 32 or 33){return null;}
+        catch(IOException e) when((e.HResult&0xffff) is 11 or 32 or 33 || (OperatingSystem.IsMacOS()&&(e.HResult&0xffff)==35)){return null;}
     }
     public static void RequestOpen(string root)=>File.WriteAllText(Path.Combine(root,".open-request"),Guid.NewGuid().ToString("N"));
     public void Dispose()=>stream.Dispose(); // Keep the inode: deleting it permits two owners.

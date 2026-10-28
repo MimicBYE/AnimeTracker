@@ -41,7 +41,7 @@ sudo apt install libx11-6 libice6 libsm6 libfontconfig1 libxext6 libxrandr2 \
 
 Для автозапуска включите **Запускать при входе в систему** и нажмите **Применить**. Приложение создаёт свой `.desktop` в `$XDG_CONFIG_HOME/autostart/` (обычно `~/.config/autostart/`). При входе открывается библиотека, поэтому отсутствие трея не оставляет приложение недоступным. Отключение удаляет только запись Anime Tracker. Администратор, cron и systemd-service не нужны.
 
-Ярлыки содержат абсолютный путь к исполняемому файлу. После перемещения распакованной папки создайте ярлык заново и повторно включите автозапуск. Путь с пробелами/Unicode поддерживается; для Exec экранируются кавычки, обратная косая черта, `$`, backtick и `%`, оболочка для запуска команды не используется. Знак `=` в пути к EXE не допускается спецификацией desktop entry: выберите другую папку. [Desktop entry Exec](https://specifications.freedesktop.org/desktop-entry/latest/exec-variables.html), [autostart](https://specifications.freedesktop.org/autostart/latest/).
+Ярлыки содержат абсолютный путь к исполняемому файлу. После перемещения распакованной папки создайте ярлык заново и повторно включите автозапуск. Путь с пробелами/Unicode поддерживается; для Exec экранируются кавычки, обратная косая черта, `$`, backtick и `%`, оболочка для запуска команды не используется. Ярлык использует `/usr/bin/env --` без shell, чтобы GIO корректно обрабатывал `%` в пути к EXE. Знак `=` в пути к EXE не поддерживается этим launcher: выберите другую папку. [Desktop entry Exec](https://specifications.freedesktop.org/desktop-entry/latest/exec-variables.html), [autostart](https://specifications.freedesktop.org/autostart/latest/).
 
 ## Виджет
 
