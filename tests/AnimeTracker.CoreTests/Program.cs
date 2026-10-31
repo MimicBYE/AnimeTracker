@@ -1,4 +1,5 @@
 ﻿using AnimeTracker;
+int probeCode;if(UpdateProcessTests.Handle(args,out probeCode))return probeCode;
 var root = Path.Combine(Path.GetTempPath(), "anime-tracker-core-" + Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(root);
 try
@@ -10,6 +11,10 @@ try
     var copy = Library.Load(path).Items.Single(); if (copy.Notes != anime.Notes || copy.Id != anime.Id || copy.MalId != 21 || copy.Score != 8 || copy.Watched != 4) throw new Exception("Cross-platform XML roundtrip");
     AppearanceTests.Run(root);SystemAppearanceTests.Run(root);
     Console.WriteLine("PASS: system default, OS signals/manual override/disposal/queued races; light/dark persistence, backup/defaults, failed writes, notifications, XDG routing, migration/backup, contrast, personal data unchanged");
+    await UpdateTests.Run(root);
+    Console.WriteLine("PASS: updater versions/channels, fake HTTP/SHA/cancellation, archive validation, three-platform install/rollback and personal data preservation");
+    UpdateProcessTests.Run(Environment.ProcessPath!,OperatingSystem.IsMacOS()?"macos-arm64":OperatingSystem.IsLinux()?"linux-x64":"windows-x64",false);
+    Console.WriteLine("PASS: isolated real updater parent/helper/child, readiness, failure/timeout rollback; no windows or OS registration changes");
     PortTests.Run(root);
     await LinuxPlatformTests.Run(root);
     LibraryStorageTests.Run(root);

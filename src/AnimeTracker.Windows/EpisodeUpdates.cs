@@ -16,7 +16,7 @@ public partial class Tracker {
  bool CanUpdateEpisodes() { return !quitting && !storageBlocked && !Windows.Cast<Window>().Any(w=>w!=widget && w!=full); }
  void StartEpisodeUpdates() {
   episodeTimer=new DispatcherTimer { Interval=TimeSpan.FromSeconds(10) };
-  episodeTimer.Tick+=async delegate { episodeTimer.Interval=TimeSpan.FromMinutes(15); await RefreshEpisodes(); };
+  episodeTimer.Tick+=async delegate { episodeTimer.Interval=TimeSpan.FromMinutes(15); await RefreshEpisodes();if(appUpdates!=null)await appUpdates.Check(false,episodeLifetime.Token); };
   episodeTimer.Start();
  }
  async Task RefreshEpisodes(bool force=false) {
@@ -31,6 +31,7 @@ public partial class Tracker {
   finally { updatingEpisodes=false; if(ScheduleChanged!=null) ScheduleChanged(); }
  }
  protected override void OnExit(ExitEventArgs e) {
+  if(appUpdates!=null)appUpdates.Dispose();
   if(appearanceBinding!=null)appearanceBinding.Dispose();
   if(episodeTimer!=null) episodeTimer.Stop(); episodeLifetime.Cancel(); base.OnExit(e);
  }

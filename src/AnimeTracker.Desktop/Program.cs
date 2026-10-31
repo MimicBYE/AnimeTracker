@@ -17,6 +17,7 @@ internal static class Program
         Arguments = args;
         try
         {
+            if(args.Length==2&&args[0]=="--apply-update")return AnimeTracker.UpdateInstall.Run(args[1]);
             int at=Array.IndexOf(args,"--data-dir");if(at>=0&&at+1==args.Length)throw new ArgumentException("После --data-dir укажите папку.");
             DataFiles=at>=0?new AnimeTracker.TrackerFiles(args[at+1]):OperatingSystem.IsLinux()?LinuxPaths.Default():new AnimeTracker.TrackerFiles(AppStore.DefaultRoot());
             bool smoke=args.Contains("--linux-smoke-test");
@@ -52,20 +53,21 @@ public sealed partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            Store = new AppStore(Program.DataFiles??new AnimeTracker.TrackerFiles(AppStore.DefaultRoot())); LibraryWindow = new MainWindow(Store); Widget = new WidgetWindow(Store);
+            Store = new AppStore(Program.DataFiles??new AnimeTracker.TrackerFiles(AppStore.DefaultRoot())); LibraryWindow = new MainWindow(Store); Widget = new WidgetWindow(Store);InitializeUpdates();
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown; desktop.MainWindow = LibraryWindow;
             CreateMenus();
             if(OperatingSystem.IsLinux()||!Program.Arguments.Contains("--startup")||tray==null)LibraryWindow.Show();
             if(Store.Widget.Enabled)Widget.Show();
             refresh = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
-            refresh.Tick += async (_,_) => { refresh.Interval = TimeSpan.FromMinutes(15); if(updating)return;updating=true;try{await Store.RefreshEpisodes(false,lifetime.Token);}catch(OperationCanceledException){}catch(Exception e){LibraryWindow.SetMessage("Обновление каталога недоступно: "+e.Message);}finally{updating=false;} };
+            refresh.Tick += async (_,_) => { refresh.Interval = TimeSpan.FromMinutes(15); if(updating)return;updating=true;try{await Store.RefreshEpisodes(false,lifetime.Token);}catch(OperationCanceledException){}catch(Exception e){LibraryWindow.SetMessage("Обновление каталога недоступно: "+e.Message);}finally{updating=false;} if(Updates!=null)await Updates.Check(false,lifetime.Token); };
             if(!Program.Arguments.Contains("--linux-smoke-test"))refresh.Start();
             if(OperatingSystem.IsLinux())
             {
                 openRequests=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(500)};
                 openRequests.Tick+=(_,_)=>{var path=Store.FilePath(".open-request");if(File.Exists(path)){try{File.Delete(path);}catch(IOException){return;}OpenLibrary();}};openRequests.Start();
             }
-            desktop.Exit += (_,_) => { LibraryWindow.FlushPendingFilters();refresh.Stop();openRequests?.Stop();lifetime.Cancel();tray?.Dispose(); };
+            desktop.Exit += (_,_) => { LibraryWindow.FlushPendingFilters();refresh.Stop();openRequests?.Stop();lifetime.Cancel();Updates?.Dispose();tray?.Dispose(); };
+            Dispatcher.UIThread.Post(()=>AnimeTracker.UpdateInstall.Acknowledge(Program.Arguments,Updates!.Build.packageVersion),DispatcherPriority.ApplicationIdle);
             if(Program.Arguments.Contains("--linux-smoke-test"))Dispatcher.UIThread.Post(RunLinuxSmoke,DispatcherPriority.ApplicationIdle);
         }
         base.OnFrameworkInitializationCompleted();

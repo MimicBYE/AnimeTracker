@@ -2,7 +2,7 @@ function Test-LinuxPackage {
     param([string]$Path,[string]$BaseVersion,[string]$PackageVersion,[string]$Channel,[string]$Commit)
     Add-Type -AssemblyName System.Formats.Tar
     $prefix="AnimeTracker-$PackageVersion-linux-x64/"
-    $blocked='(^|/)(data|covers|imports|bin|obj|artifacts|\.git|\.tools)(/|$)|(^|/)(library|watch-choices|widget-settings|appearance-settings|view-settings|personal-order|arcs)\.xml$|(^|/)\.env($|\.)|\.(pfx|p12|pem|key|pdb|tmp|bak)$'
+    $blocked='(^|/)(data|covers|imports|bin|obj|artifacts|\.git|\.tools)(/|$)|(^|/)(library|watch-choices|widget-settings|appearance-settings|update-settings|view-settings|personal-order|arcs)\.xml$|(^|/)\.env($|\.)|\.(pfx|p12|pem|key|pdb|tmp|bak)$'
     $file=[IO.File]::OpenRead($Path);$gzip=[IO.Compression.GZipStream]::new($file,[IO.Compression.CompressionMode]::Decompress);$tar=[System.Formats.Tar.TarReader]::new($gzip)
     $found=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     try {
