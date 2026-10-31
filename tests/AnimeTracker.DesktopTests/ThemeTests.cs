@@ -51,6 +51,7 @@ internal static class ThemeTests
                 Capture(content,screenshots,"desktop-"+(dark?"dark":"light"),1040,800);
                 Capture((Control)widget.Content!,screenshots,"desktop-widget-"+(dark?"dark":"light"),widget.Width,widget.Height);
             }
+            int libraryEvents=0;store.Changed+=()=>libraryEvents++;
             var task=window.Settings();var dialog=window.OwnedWindows.Single();dialog.Opacity=0;dialog.ShowInTaskbar=false;Dispatcher.UIThread.RunJobs();
             ThemeChoice(dialog).SelectedIndex=0;Check(store.Appearance.Dark,"Settings draft applied early");Click(FindButton(dialog,"Закрыть"));PumpUntil(()=>task.IsCompleted);Check(store.Appearance.Dark,"Cancel applied theme");
             // Keep startup untouched even on a developer's macOS/Linux session.
@@ -58,6 +59,7 @@ internal static class ThemeTests
             var startup=dialog.GetLogicalDescendants().OfType<CheckBox>().Single(c=>c.Content as string=="Запускать при входе в систему");
             if(startup.IsChecked!=true){Click(FindButton(dialog,"Применить"));PumpUntil(()=>task.IsCompleted);Check(!store.Appearance.Dark&&!new AppStore(store.Files).Appearance.Dark,"Apply/restart theme");}
             else {Click(FindButton(dialog,"Закрыть"));PumpUntil(()=>task.IsCompleted);store.SetAppearance("light");}
+            Check(libraryEvents==0,"Theme-only Settings reset library/widget");
             Check(File.ReadAllBytes(store.LibraryPath).SequenceEqual(original),"Theme UI changed personal XML");
             return new{checks="repeated live light/dark switch, Fluent variant, existing text/caret, widget, native combo popup, primary contrast, Settings draft/cancel/apply/restart; personal XML unchanged",startup="real OS startup registration is never changed; Apply checked when startup is off",screenshots="synthetic fixture, shared Avalonia renderer; not manual native macOS/Linux acceptance"};
         }

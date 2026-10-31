@@ -48,7 +48,8 @@ public partial class Tracker {
    bool wasStartup=false,changedStartup=false;
    try {
     if(startup.IsEnabled){wasStartup=AutoStart.Enabled;changedStartup=wasStartup!=(startup.IsChecked==true);if(changedStartup || startup.IsChecked==true)AutoStart.Set(startup.IsChecked==true);}
-    if(!SaveWidgetOptions(selected,Math.Max(0,style.SelectedIndex),enabled.IsChecked==true)){if(changedStartup)AutoStart.Set(wasStartup);return;}
+    bool changedWidget=selected!=widgetOptions.Pinned||Math.Max(0,style.SelectedIndex)!=widgetOptions.Style||(enabled.IsChecked==true)!=widgetOptions.Enabled;
+    if(changedWidget&&!SaveWidgetOptions(selected,Math.Max(0,style.SelectedIndex),enabled.IsChecked==true)){if(changedStartup)AutoStart.Set(wasStartup);return;}
     service.SetAppearance(appearance.SelectedIndex==1?"dark":"light");message.Text="Настройки сохранены";
    } catch(Exception ex){message.Text="Не удалось сохранить настройки: "+ex.Message;}
   })));

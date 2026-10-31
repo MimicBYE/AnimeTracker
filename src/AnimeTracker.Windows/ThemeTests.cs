@@ -47,10 +47,12 @@ public partial class Tracker {
     ThemeCapture(app.widgetSurface,screenshots,"windows-widget-"+(dark?"dark":"light"),app.widget.Width,app.widget.Height);
    }
    // Exercise the real settings handler with the widget disabled and startup unchanged.
+   int libraryEvents=0;app.service.Changed+=delegate{libraryEvents++;};
    Action applyTheme=delegate{ThemeChildren(settings).OfType<CheckBox>().Single(c=>c.Content as string=="Запускать вместе с Windows").IsEnabled=false;apply.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));};
    tabs.SelectedItem=settings;host.UpdateLayout();theme.SelectedIndex=0;applyTheme();ThemeCheck(!app.service.Appearance.Dark,"settings apply");
    theme.SelectedIndex=1;var reset=ThemeChildren(settings).OfType<Button>().Single(b=>b.Content as string=="Сбросить изменения");reset.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));ThemeCheck(theme.SelectedIndex==0&&!app.service.Appearance.Dark,"settings reset");
    theme.SelectedIndex=1;applyTheme();ThemeCheck(new TrackerService(root).Appearance.Dark,"settings restart");
+   ThemeCheck(libraryEvents==0,"Theme-only Settings reset library/widget");
    ThemeCheck(File.ReadAllBytes(app.service.LibraryPath).SequenceEqual(original),"personal library changed");
    var notice=app.MessageWindow(host,"Сообщение в выбранной теме","Anime Tracker");notice.Opacity=0;notice.ShowInTaskbar=false;notice.Show();notice.UpdateLayout();ThemeCheck(ThemeColor(notice.Background)==ThemeBrush("#F8EECC").Color,"application message");notice.Close();
    File.WriteAllText(report,"PASS: WPF light/dark repeated live switch; text fields, row/paper brushes, combo popup, opaque widget; settings draft/apply/reset/restart; themed message; personal XML unchanged. Synthetic data; no Explorer attachment, tray, autostart mutation or native OS-scale claim.");
