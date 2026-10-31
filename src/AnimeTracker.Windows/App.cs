@@ -77,8 +77,7 @@ public partial class Tracker : Application {
   StartupDiagnostics.Write("initializing");
   InitializeThemeResources();
   service=new TrackerService(Path.GetDirectoryName(dataPath));
-  service.AppearanceChanged+=ApplyAppearance;ApplyAppearance();
-  service.Changed+=ApplyAppearance;
+  BindAppearance(new WindowsSystemAppearance());
   if(service.Error.Length>0)ShowMessage(service.Error,storageBlocked?"Ошибка загрузки":"Загрузка данных");
   preferences=service.View;
   StartupDiagnostics.Write("library-loaded");
@@ -450,7 +449,7 @@ public partial class Tracker : Application {
    var widgetTest=new Library(); widgetTest.Items.Add(older); widgetTest.Items.Add(recent);
    if(LatestAnime(widgetTest)!=recent) throw new Exception("Widget must show latest user change regardless of status");
    older.Updated=recent.Updated.AddMinutes(1); if(LatestAnime(widgetTest)!=older) throw new Exception("Widget follows user edits");
-   ViewPreferences.Test(dir);AppearanceTests.Run(dir);SettingsBackupTest(dir);LibraryStorageTests.Run(dir);AutoStart.Test(dir);StartupDiagnostics.Test(dir);TrackerServiceTests.Run(dir).GetAwaiter().GetResult();
+   ViewPreferences.Test(dir);AppearanceTests.Run(dir);SystemAppearanceTests.Run(dir);SettingsBackupTest(dir);LibraryStorageTests.Run(dir);AutoStart.Test(dir);StartupDiagnostics.Test(dir);TrackerServiceTests.Run(dir).GetAwaiter().GetResult();
    var completion=new Anime { Watched=3,Total=12 };
    completion.SetProgress(3,12,"completed"); if(completion.Watched!=12 || completion.Status!="completed") throw new Exception("Completed fills known total");
    completion.SetProgress(5,0,"completed"); if(completion.Watched!=5) throw new Exception("Unknown total preserves progress");

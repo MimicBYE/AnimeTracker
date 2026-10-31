@@ -6,20 +6,24 @@ using System.Xml.Linq;
 
 namespace AnimeTracker {
 public sealed class AppearanceOptions {
- public string Mode="light";
+ public static readonly string[] Modes={"system","light","dark"};
+ public static readonly string[] Labels={"Системная","Светлая","Тёмная"};
+ public string Mode="system";
  public bool Dark {get{return Mode=="dark";}}
+ public int Index {get{return Math.Max(0,Array.IndexOf(Modes,Mode));}}
+ public bool ResolveDark(bool systemDark){return Mode=="system"?systemDark:Dark;}
  public static AppearanceOptions Load(string path) {
   foreach(var file in new[]{path,path+".bak"})try {
    if(!File.Exists(file))continue;
    using(var reader=XmlReader.Create(file,new XmlReaderSettings {DtdProcessing=DtdProcessing.Prohibit,XmlResolver=null,MaxCharactersInDocument=4096})){
     var root=XDocument.Load(reader).Root;var mode=root==null?null:(string)root.Attribute("mode");
-    if(root!=null&&root.Name=="appearance"&&!root.HasElements&&String.IsNullOrWhiteSpace(root.Value)&&(mode=="light"||mode=="dark"))return new AppearanceOptions {Mode=mode};
+    if(root!=null&&root.Name=="appearance"&&!root.HasElements&&String.IsNullOrWhiteSpace(root.Value)&&Array.IndexOf(Modes,mode)>=0)return new AppearanceOptions {Mode=mode};
    }
   }catch(IOException){}catch(UnauthorizedAccessException){}catch(XmlException){}
   return new AppearanceOptions();
  }
  public void Save(string path) {
-  if(Mode!="light"&&Mode!="dark")throw new ArgumentException("Неизвестная тема приложения.");
+  if(Array.IndexOf(Modes,Mode)<0)throw new ArgumentException("Неизвестная тема приложения.");
   Directory.CreateDirectory(Path.GetDirectoryName(path));var temp=path+".tmp";
   try{new XElement("appearance",new XAttribute("mode",Mode)).Save(temp);if(File.Exists(path))File.Replace(temp,path,path+".bak");else File.Move(temp,path);}finally{if(File.Exists(temp))File.Delete(temp);}
  }

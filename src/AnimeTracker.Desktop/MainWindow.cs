@@ -16,6 +16,7 @@ namespace AnimeTracker.Desktop;
 public sealed partial class MainWindow:Window
 {
     readonly AppStore store;
+    readonly AppearanceBinding appearance;
     readonly Covers covers;
     readonly Func<Window,Task<string?>> chooseMalFile;
     readonly CancellationTokenSource lifetime=new();
@@ -32,10 +33,10 @@ public sealed partial class MainWindow:Window
     ComboBox status=null!,sort=null!;
     Button genres=null!;
     bool initializing;
-    public MainWindow(AppStore store,Func<Window,Task<string?>>? chooseMalFile=null)
+    public MainWindow(AppStore store,Func<Window,Task<string?>>? chooseMalFile=null,ISystemAppearance? systemAppearance=null)
     {
         this.chooseMalFile=chooseMalFile??(owner=>Paper.OpenFile(owner,"Импорт из MyAnimeList","*.xml","*.gz"));
-        this.store=store;ApplyAppearance();store.AppearanceChanged+=ApplyAppearance;covers=new Covers(store);Title="Anime Tracker · "+DesktopIntegration.Name;Width=1040;Height=800;MinWidth=850;MinHeight=520;WindowStartupLocation=WindowStartupLocation.CenterScreen;
+        this.store=store;appearance=new AppearanceBinding(store,systemAppearance??new DesktopSystemAppearance(),action=>{if(Dispatcher.UIThread.CheckAccess())action();else Dispatcher.UIThread.Post(action);},DesktopTheme.Apply);covers=new Covers(store);Title="Anime Tracker · "+DesktopIntegration.Name;Width=1040;Height=800;MinWidth=850;MinHeight=520;WindowStartupLocation=WindowStartupLocation.CenterScreen;
         libraryRows.ItemTemplate=new FuncDataTemplate<Anime>((anime,_)=>anime==null?null:AnimeRow(anime));
         searchTimer.Tick+=(_,_)=>FlushPendingFilters();
         using(var icon=Avalonia.Platform.AssetLoader.Open(new Uri("avares://AnimeTracker/Assets/app.ico")))Icon=new WindowIcon(icon);
@@ -47,12 +48,11 @@ public sealed partial class MainWindow:Window
         tabs.ItemsSource=new[]{LibraryTab(),EveningTab(),CalendarTab(),SequelsTab(),PersonalTab(),GlobalTopTab()};
         store.Changed+=RefreshCommon;RefreshCommon();
         Closing+=(_,e)=>{FlushPendingFilters();if(!App.CurrentApp.Quitting){e.Cancel=true;if(DesktopIntegration.CloseExits)Dispatcher.UIThread.Post(App.CurrentApp.Quit);else Hide();}};
-        Closed+=(_,_)=>{searchTimer.Stop();store.Changed-=RefreshCommon;store.AppearanceChanged-=ApplyAppearance;lifetime.Cancel();};
+        Closed+=(_,_)=>{searchTimer.Stop();store.Changed-=RefreshCommon;appearance.Dispose();lifetime.Cancel();};
         KeyDown+=(_,e)=>{if((e.KeyModifiers.HasFlag(KeyModifiers.Meta)||e.KeyModifiers.HasFlag(KeyModifiers.Control))&&e.Key==Key.F){tabs.SelectedIndex=0;search.Focus();e.Handled=true;}};
     }
     public void SetMessage(string value)=>message.Text=value;
-    void ApplyAppearance()=>DesktopTheme.Apply(store.Appearance.Dark);
-    void RefreshCommon(){ApplyAppearance();RenderLibrary();RenderPersonal();refreshCalendar?.Invoke();message.Text=store.Error;}
+    void RefreshCommon(){RenderLibrary();RenderPersonal();refreshCalendar?.Invoke();message.Text=store.Error;}
     static DockPanel Pane(Control header,Control body){var pane=new DockPanel{Margin=new Thickness(26,22)};DockPanel.SetDock(header,Dock.Top);pane.Children.Add(header);pane.Children.Add(Paper.Scroll(body));return pane;}
     static TabItem Tab(string name,Control content){var tab=new TabItem{Header=name,Content=content};Avalonia.Automation.AutomationProperties.SetName(tab,name);return tab;}
     public Task AddFromWidget(){App.CurrentApp.OpenLibrary();return AddAnime();}
@@ -126,10 +126,10 @@ public sealed partial class MainWindow:Window
     public async Task Settings()
     {
         var enabled=new CheckBox{Content="Показывать виджет",IsChecked=store.Widget.Enabled};var style=Paper.Choice(new[]{"Бумага","Компактная полоска","Обложка с прогрессом"},store.Widget.Style,280);var startup=new CheckBox{Content="Запускать при входе в систему",IsChecked=DesktopIntegration.AutoStartEnabled,IsEnabled=DesktopIntegration.AutoStartAvailable};
-        var appearance=Paper.Choice(new[]{"Светлая","Тёмная"},store.Appearance.Dark?1:0,280);Avalonia.Automation.AutomationProperties.SetName(appearance,"Тема приложения");Avalonia.Automation.AutomationProperties.SetName(style,"Оформление виджета");
+        var appearance=Paper.Choice(AppearanceOptions.Labels,store.Appearance.Index,280);Avalonia.Automation.AutomationProperties.SetName(appearance,"Тема приложения");Avalonia.Automation.AutomationProperties.SetName(style,"Оформление виджета");
         var panel=Paper.Stack(Paper.Text("Настройки",28),Paper.Card(Paper.Stack(Paper.Text("Оформление приложения",20),Paper.Field("Тема",appearance))),Paper.Card(Paper.Stack(Paper.Text("Виджет и запуск",20),enabled,Paper.Field("Оформление виджета",style),startup)));var layout=new DockPanel();var dialog=Paper.Dialog(this,"Настройки",layout,680,590);
         if(OperatingSystem.IsLinux())panel.Children.Add(Paper.Card(Paper.Stack(Paper.Text("Linux",20),Paper.Text("Виджет — отдельное окно. Его видимость при показе рабочего стола зависит от оболочки. Закрытие библиотеки завершает приложение; автозапуск открывает библиотеку и работает без трея.",13,Paper.Muted),Paper.AsyncButton("Добавить в меню приложений",async()=>{DesktopIntegration.InstallMenu();await Paper.Message(dialog,"Ярлык добавлен в меню. После перемещения папки приложения создайте его заново.");}))));
-        var footer=Paper.Actions(Paper.Primary(Paper.AsyncButton("Применить",()=>Act(()=>{if(style.SelectedIndex!=store.Widget.Style||(enabled.IsChecked==true)!=store.Widget.Enabled)store.SetWidget(store.Widget.Pinned,style.SelectedIndex,enabled.IsChecked==true);if(DesktopIntegration.AutoStartAvailable&&(startup.IsChecked==true||startup.IsChecked!=DesktopIntegration.AutoStartEnabled))DesktopIntegration.SetAutoStart(startup.IsChecked==true);store.SetAppearance(appearance.SelectedIndex==1?"dark":"light");dialog.Close();}))),Paper.Button("Закрыть",()=>dialog.Close()));footer.Margin=new Thickness(0,14,0,0);DockPanel.SetDock(footer,Dock.Bottom);layout.Children.Add(footer);layout.Children.Add(Paper.Scroll(panel));
+        var footer=Paper.Actions(Paper.Primary(Paper.AsyncButton("Применить",()=>Act(()=>{if(style.SelectedIndex!=store.Widget.Style||(enabled.IsChecked==true)!=store.Widget.Enabled)store.SetWidget(store.Widget.Pinned,style.SelectedIndex,enabled.IsChecked==true);if(DesktopIntegration.AutoStartAvailable&&(startup.IsChecked==true||startup.IsChecked!=DesktopIntegration.AutoStartEnabled))DesktopIntegration.SetAutoStart(startup.IsChecked==true);store.SetAppearance(AppearanceOptions.Modes[Math.Max(0,appearance.SelectedIndex)]);dialog.Close();}))),Paper.Button("Закрыть",()=>dialog.Close()));footer.Margin=new Thickness(0,14,0,0);DockPanel.SetDock(footer,Dock.Bottom);layout.Children.Add(footer);layout.Children.Add(Paper.Scroll(panel));
         var import=Paper.AsyncButton("Импорт XML из MyAnimeList",()=>ImportMalDialog(dialog));import.IsEnabled=!store.ReadOnly;
         var data=Paper.Stack(Paper.Text("Данные и резервные копии",20),Paper.Text("Импортируйте список MyAnimeList или перенесите папку data с Windows. Перед заменой данных сохраняется резервная копия.",13,Paper.Muted),Paper.Actions(import));
         data.Children.Add(Paper.Actions(Paper.Button("Открыть папку данных",()=>DesktopIntegration.OpenFolder(store.Root)),Paper.AsyncButton("Перенести папку из Windows",async()=>{

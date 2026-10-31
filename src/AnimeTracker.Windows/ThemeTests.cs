@@ -24,7 +24,7 @@ public partial class Tracker {
   string report=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"theme-test.txt"),root=Path.Combine(Path.GetTempPath(),"anime-theme-"+Guid.NewGuid().ToString("N"));Tracker app=null;Window host=null;
   try{
    app=new Tracker{isolatedThemeTest=true,ShutdownMode=ShutdownMode.OnExplicitShutdown};app.InitializeThemeResources();app.service=new TrackerService(root);app.preferences=app.service.View;app.service.SetWidget("",0,false);
-   app.service.AppearanceChanged+=app.ApplyAppearance;app.service.Changed+=app.ApplyAppearance;
+   var system=new SystemAppearanceTests.Source();app.BindAppearance(system);
    foreach(var title in new[]{"Бумажная история","Путешествие к звёздам","Последний летний день"}){var a=app.service.AddManual(title);app.service.Update(a,title,7,24,"watching",8,"Синтетические данные");a.English="Paper story";a.Genres="Приключения|Драма";}
    app.service.Save();var original=File.ReadAllBytes(app.service.LibraryPath);app.BuildWidget();
    host=new Window{Title="Anime Tracker",Width=940,Height=720,Opacity=0,ShowInTaskbar=false,ShowActivated=false};app.StyleWindow(host);
@@ -33,7 +33,7 @@ public partial class Tracker {
    foreach(var anime in app.library.Items)rows.Children.Add(app.Row(anime,false));
    var settings=app.BuildSettingsTab(host);var tabs=new TabControl{Background=Brushes.Transparent,BorderThickness=new Thickness(0)};tabs.Items.Add(new TabItem{Header="Библиотека",Content=new SmoothScrollViewer{Content=rows}});tabs.Items.Add(settings);host.Content=new Border{Background=ThemeBrush("#F8EECC"),Child=tabs};host.Show();host.UpdateLayout();
    var theme=ThemeChildren(settings).OfType<ComboBox>().Single(c=>AutomationProperties.GetName(c)=="Тема приложения");var apply=ThemeChildren(settings).OfType<Button>().Single(b=>b.Content as string=="Применить");
-   theme.SelectedIndex=1;ThemeCheck(!app.service.Appearance.Dark&&!WindowsPalette.Dark,"draft applied early");
+   theme.SelectedIndex=2;ThemeCheck(!app.service.Appearance.Dark&&!WindowsPalette.Dark,"draft applied early");
    string screenshots=null;int index=Array.IndexOf(args,"--screenshots");if(index>=0&&index+1<args.Length)screenshots=Path.GetFullPath(args[index+1]);
    foreach(bool dark in new[]{false,true,false,true}){
     app.service.SetAppearance(dark?"dark":"light");app.Dispatcher.Invoke(new Action(delegate{}),DispatcherPriority.ApplicationIdle);host.UpdateLayout();
@@ -49,13 +49,20 @@ public partial class Tracker {
    // Exercise the real settings handler with the widget disabled and startup unchanged.
    int libraryEvents=0;app.service.Changed+=delegate{libraryEvents++;};
    Action applyTheme=delegate{ThemeChildren(settings).OfType<CheckBox>().Single(c=>c.Content as string=="Запускать вместе с Windows").IsEnabled=false;apply.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));};
-   tabs.SelectedItem=settings;host.UpdateLayout();theme.SelectedIndex=0;applyTheme();ThemeCheck(!app.service.Appearance.Dark,"settings apply");
-   theme.SelectedIndex=1;var reset=ThemeChildren(settings).OfType<Button>().Single(b=>b.Content as string=="Сбросить изменения");reset.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));ThemeCheck(theme.SelectedIndex==0&&!app.service.Appearance.Dark,"settings reset");
-   theme.SelectedIndex=1;applyTheme();ThemeCheck(new TrackerService(root).Appearance.Dark,"settings restart");
+   tabs.SelectedItem=settings;host.UpdateLayout();theme.SelectedIndex=1;applyTheme();ThemeCheck(app.service.Appearance.Mode=="light","settings apply");
+   theme.SelectedIndex=2;var reset=ThemeChildren(settings).OfType<Button>().Single(b=>b.Content as string=="Сбросить изменения");reset.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));ThemeCheck(theme.SelectedIndex==1&&!app.service.Appearance.Dark,"settings reset");
+   theme.SelectedIndex=2;applyTheme();ThemeCheck(new TrackerService(root).Appearance.Dark,"settings restart");
+   system.Change(false);ThemeCheck(WindowsPalette.Dark,"manual dark followed OS");
+   theme.SelectedIndex=0;applyTheme();ThemeCheck(app.service.Appearance.Mode=="system"&&!WindowsPalette.Dark,"system selection");
+   var themeBytes=File.ReadAllBytes(app.service.Files.Appearance);
+   System.Threading.Tasks.Task.Run(()=>system.Change(true)).GetAwaiter().GetResult();app.Dispatcher.Invoke(new Action(delegate{}),DispatcherPriority.ApplicationIdle);host.UpdateLayout();
+   ThemeCheck(WindowsPalette.Dark&&ThemeColor(host.Background)==ThemeBrush("#F8EECC").Color&&File.ReadAllBytes(app.service.Files.Appearance).SequenceEqual(themeBytes),"background OS signal or persistence");
+   system.Change(false);ThemeCheck(!WindowsPalette.Dark,"system light update");app.service.SetAppearance("dark");system.Change(false);ThemeCheck(WindowsPalette.Dark,"manual override");
+   ThemeCheck(WindowsSystemAppearance.IsDark(0)&&!WindowsSystemAppearance.IsDark(1)&&!WindowsSystemAppearance.IsDark(null)&&!WindowsSystemAppearance.IsDark("0"),"Windows registry value fallback");
    ThemeCheck(libraryEvents==0,"Theme-only Settings reset library/widget");
    ThemeCheck(File.ReadAllBytes(app.service.LibraryPath).SequenceEqual(original),"personal library changed");
    var notice=app.MessageWindow(host,"Сообщение в выбранной теме","Anime Tracker");notice.Opacity=0;notice.ShowInTaskbar=false;notice.Show();notice.UpdateLayout();ThemeCheck(ThemeColor(notice.Background)==ThemeBrush("#F8EECC").Color,"application message");notice.Close();
-   File.WriteAllText(report,"PASS: WPF light/dark repeated live switch; text fields, row/paper brushes, combo popup, opaque widget; settings draft/apply/reset/restart; themed message; personal XML unchanged. Synthetic data; no Explorer attachment, tray, autostart mutation or native OS-scale claim.");
+   File.WriteAllText(report,"PASS: WPF light/dark repeated live switch; text fields, row/paper brushes, combo popup, opaque widget; settings draft/apply/reset/restart; simulated system light/dark/background signal, manual override, no OS-triggered writes; themed message; personal XML unchanged. Synthetic data; no Explorer attachment, tray, autostart mutation or native OS-scale claim.");
   }catch(Exception e){File.WriteAllText(report,"FAIL "+e);Environment.ExitCode=1;}
   finally{if(app!=null){app.quitting=true;if(host!=null)host.Close();if(app.widget!=null)app.widget.Close();app.Shutdown();}if(Directory.Exists(root))Directory.Delete(root,true);}
  }

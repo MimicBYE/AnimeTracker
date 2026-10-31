@@ -33,8 +33,8 @@ public partial class Tracker {
  bool themeResourcesReady,lastDark;
  static SolidColorBrush ThemeBrush(Color light) {return WindowsPalette.Brush(light);}
  static SolidColorBrush ThemeBrush(string light) {return ThemeBrush((Color)ColorConverter.ConvertFromString(light));}
- void ApplyAppearance() {
-  bool dark=service!=null&&service.Appearance.Dark;if(themeResourcesReady&&lastDark==dark)return;
+ void ApplyAppearance(bool dark) {
+  if(themeResourcesReady&&lastDark==dark)return;
   WindowsPalette.Apply(dark);themeResourcesReady=true;lastDark=dark;
   foreach(var light in PaperPalette.LightColors)Resources[PaperPalette.Key(light)]=ThemeBrush(light);
   foreach(Window window in Windows)ApplyWindowTheme(window);

@@ -31,7 +31,7 @@ internal static class ThemeTests
         var store=new AppStore(Path.Combine(root,"theme"));store.SetWidget("",0,false);
         foreach(var title in new[]{"Бумажная история","Путешествие к звёздам","Последний летний день"}){var anime=store.AddManual(title);store.Update(anime,title,7,24,"watching",8,"Синтетические данные");anime.English="Paper story";anime.Genres="Приключения|Драма";}
         store.Save();var original=File.ReadAllBytes(store.LibraryPath);
-        var window=new MainWindow(store){Opacity=0,ShowInTaskbar=false,ShowActivated=false};window.Show();Dispatcher.UIThread.RunJobs();window.UpdateLayout();
+        var system=new SystemAppearanceTests.Source();var window=new MainWindow(store,systemAppearance:system){Opacity=0,ShowInTaskbar=false,ShowActivated=false};window.Show();Dispatcher.UIThread.RunJobs();window.UpdateLayout();
         var widget=new WidgetWindow(store);var content=(Panel)window.Content!;content.Background=window.Background;
         var combo=content.GetLogicalDescendants().OfType<ComboBox>().First();var search=content.GetLogicalDescendants().OfType<TextBox>().First();var oldForeground=search.Foreground;
         try
@@ -53,16 +53,24 @@ internal static class ThemeTests
             }
             int libraryEvents=0;store.Changed+=()=>libraryEvents++;
             var task=window.Settings();var dialog=window.OwnedWindows.Single();dialog.Opacity=0;dialog.ShowInTaskbar=false;Dispatcher.UIThread.RunJobs();
-            ThemeChoice(dialog).SelectedIndex=0;Check(store.Appearance.Dark,"Settings draft applied early");Click(FindButton(dialog,"Закрыть"));PumpUntil(()=>task.IsCompleted);Check(store.Appearance.Dark,"Cancel applied theme");
+            ThemeChoice(dialog).SelectedIndex=1;Check(store.Appearance.Dark,"Settings draft applied early");Click(FindButton(dialog,"Закрыть"));PumpUntil(()=>task.IsCompleted);Check(store.Appearance.Dark,"Cancel applied theme");
             // Keep startup untouched even on a developer's macOS/Linux session.
-            task=window.Settings();dialog=window.OwnedWindows.Single();dialog.Opacity=0;Dispatcher.UIThread.RunJobs();ThemeChoice(dialog).SelectedIndex=0;
+            task=window.Settings();dialog=window.OwnedWindows.Single();dialog.Opacity=0;Dispatcher.UIThread.RunJobs();ThemeChoice(dialog).SelectedIndex=1;
             var startup=dialog.GetLogicalDescendants().OfType<CheckBox>().Single(c=>c.Content as string=="Запускать при входе в систему");
-            if(startup.IsChecked!=true){Click(FindButton(dialog,"Применить"));PumpUntil(()=>task.IsCompleted);Check(!store.Appearance.Dark&&!new AppStore(store.Files).Appearance.Dark,"Apply/restart theme");}
+            if(startup.IsChecked!=true){Click(FindButton(dialog,"Применить"));PumpUntil(()=>task.IsCompleted);Check(store.Appearance.Mode=="light"&&new AppStore(store.Files).Appearance.Mode=="light","Apply/restart theme");}
             else {Click(FindButton(dialog,"Закрыть"));PumpUntil(()=>task.IsCompleted);store.SetAppearance("light");}
+            system.Change(true);Dispatcher.UIThread.RunJobs();Check(window.ActualThemeVariant==ThemeVariant.Light,"Manual light followed OS");
+            store.SetAppearance("system");Dispatcher.UIThread.RunJobs();Check(window.ActualThemeVariant==ThemeVariant.Dark,"System dark resolution");
+            var preference=File.ReadAllBytes(store.Files.Appearance);
+            Task.Run(()=>system.Change(false)).GetAwaiter().GetResult();Dispatcher.UIThread.RunJobs();
+            Check(window.ActualThemeVariant==ThemeVariant.Light&&ColorOf(((Border)widget.Content!).Background)==Expected("#F5E5A6",false),"Background system signal / widget");
+            system.Change(true);Dispatcher.UIThread.RunJobs();Check(window.ActualThemeVariant==ThemeVariant.Dark,"Live system dark");
+            Check(File.ReadAllBytes(store.Files.Appearance).SequenceEqual(preference)&&new AppStore(store.Files).Appearance.Mode=="system","System notification wrote preferences");
+            store.SetAppearance("dark");system.Change(false);Dispatcher.UIThread.RunJobs();Check(window.ActualThemeVariant==ThemeVariant.Dark,"Manual dark followed OS");
             Check(libraryEvents==0,"Theme-only Settings reset library/widget");
             Check(File.ReadAllBytes(store.LibraryPath).SequenceEqual(original),"Theme UI changed personal XML");
-            return new{checks="repeated live light/dark switch, Fluent variant, existing text/caret, widget, native combo popup, primary contrast, Settings draft/cancel/apply/restart; personal XML unchanged",startup="real OS startup registration is never changed; Apply checked when startup is off",screenshots="synthetic fixture, shared Avalonia renderer; not manual native macOS/Linux acceptance"};
+            return new{checks="repeated live light/dark switch, Fluent variant, existing text/caret, widget, native combo popup, primary contrast, Settings draft/cancel/apply/restart, simulated live OS light/dark/background signal, manual override, no preference writes on OS change; personal XML unchanged",startup="real OS startup registration is never changed; Apply checked when startup is off",screenshots="synthetic fixture, shared Avalonia renderer; not manual native macOS/Linux acceptance"};
         }
-        finally{foreach(var child in window.OwnedWindows.ToArray())child.Close();typeof(App).GetProperty("Quitting")!.SetValue(App.CurrentApp,true);widget.Close();window.Close();}
+        finally{foreach(var child in window.OwnedWindows.ToArray())child.Close();typeof(App).GetProperty("Quitting")!.SetValue(App.CurrentApp,true);widget.Close();window.Close();Check(system.Disposed&&system.Subscribers==0,"System theme subscription leaked");}
     }
 }

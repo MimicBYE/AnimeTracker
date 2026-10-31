@@ -31,6 +31,7 @@ public partial class Tracker {
   finally { updatingEpisodes=false; if(ScheduleChanged!=null) ScheduleChanged(); }
  }
  protected override void OnExit(ExitEventArgs e) {
+  if(appearanceBinding!=null)appearanceBinding.Dispose();
   if(episodeTimer!=null) episodeTimer.Stop(); episodeLifetime.Cancel(); base.OnExit(e);
  }
 }
