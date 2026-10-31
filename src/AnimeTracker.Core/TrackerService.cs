@@ -27,6 +27,7 @@ public partial class TrackerService {
  public WatchChoices Choices {get;private set;}
  public ViewPreferences View {get;private set;}
  public WidgetOptions Widget {get;private set;}
+ public AppearanceOptions Appearance {get;private set;}
  public PersonalOrder Order {get;private set;}
  public List<AnimeArc> Arcs {get;private set;}
  public Dictionary<int,CatalogEntry> Metadata {get;private set;}
@@ -36,6 +37,7 @@ public partial class TrackerService {
  public bool ChoicesBlocked {get;private set;}
  public bool ArcsBlocked {get;private set;}
  public event Action Changed;
+ public event Action AppearanceChanged;
  public TrackerService(string root) : this(new TrackerFiles(root),new ShikimoriCatalogSource(),()=>DateTime.UtcNow) {}
  public TrackerService(TrackerFiles files,ICatalogSource catalog,Func<DateTime> utcNow,bool defaultWidgetEnabled=true) {
   if(files==null || catalog==null || utcNow==null)throw new ArgumentNullException();
@@ -49,10 +51,15 @@ public partial class TrackerService {
   try{Choices=WatchChoices.Load(Files.Choices);}catch(Exception e){Choices=new WatchChoices();ChoicesBlocked=true;Error+=" "+e.Message;}
   try{Arcs=ArcData.Load(Files.Arcs);}catch(Exception e){Arcs=new List<AnimeArc>();ArcsBlocked=true;Error+=" Не удалось прочитать арки: "+e.Message;}
   View=ViewPreferences.Load(Files.View);Widget=WidgetOptions.Load(Files.Widget);if(!File.Exists(Files.Widget)&&!File.Exists(Files.Widget+".bak"))Widget.Enabled=defaultWidgetEnabled;
+  Appearance=AppearanceOptions.Load(Files.Appearance);
   Order=PersonalOrder.Load(Files.Order);Schedule=CalendarNotes.Load(Files.Schedule);Metadata=ReadMetadata(Files.Metadata);Notify();
  }
  void Writable() {if(ReadOnly)throw new InvalidOperationException(Error);}
  public void SaveView() {View.Save(Files.View);}
+ public void SetAppearance(string mode) {
+  var next=new AppearanceOptions {Mode=mode};next.Save(Files.Appearance);Appearance=next;
+  if(AppearanceChanged!=null)AppearanceChanged();
+ }
  public void SetWidget(string pin,int style,bool? enabled=null) {var next=new WidgetOptions{Pinned=pin,Style=style,Enabled=enabled??Widget.Enabled};next.Save(Files.Widget);Widget=next;Notify();}
  public void ChangeChoices(Action<WatchChoices> edit) {
   if(ChoicesBlocked)throw new InvalidOperationException("Списки очереди и скрытия недоступны для записи.");

@@ -8,6 +8,8 @@ try
     var anime = new Anime { Title = "Русский 日本語 & notes", Notes = "Моя заметка", Status = "planned", MalId = 21, Watched = 4, Total = 12, Score = 8 };
     var library = new Library(); library.Items.Add(anime); var path = Path.Combine(root, "library.xml"); library.Save(path);
     var copy = Library.Load(path).Items.Single(); if (copy.Notes != anime.Notes || copy.Id != anime.Id || copy.MalId != 21 || copy.Score != 8 || copy.Watched != 4) throw new Exception("Cross-platform XML roundtrip");
+    AppearanceTests.Run(root);
+    Console.WriteLine("PASS: light/dark persistence, backup/defaults, failed writes, notifications, XDG routing, migration/backup, contrast, personal data unchanged");
     PortTests.Run(root);
     await LinuxPlatformTests.Run(root);
     LibraryStorageTests.Run(root);

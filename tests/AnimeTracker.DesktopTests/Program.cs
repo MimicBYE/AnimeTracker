@@ -50,7 +50,8 @@ internal static class Program {
     results.Add(new{entries=size,initialControlConstructionMs=initial,inputHandlersMs=timings,immediateSaves,realizedContainers=realized,checks="debounce, single write, finite viewport/scroll, smooth wheel, search/status, flush on close"});
    }
    var settings=SettingsFlowTests.Run(root,args.Length==2&&args[0]=="--screenshots"?args[1]:null);
-   Console.WriteLine(JsonSerializer.Serialize(new{os=System.Runtime.InteropServices.RuntimeInformation.OSDescription,framework=Environment.Version.ToString(),mode="input timing on unshown Avalonia controls, then transparent native-window checks; synthetic data, no covers/network; not frame-time measurements",results,settings},new JsonSerializerOptions{WriteIndented=true}));
+   var theme=ThemeTests.Run(root,args.Length==2&&args[0]=="--screenshots"?args[1]:null);
+   Console.WriteLine(JsonSerializer.Serialize(new{theme,os=System.Runtime.InteropServices.RuntimeInformation.OSDescription,framework=Environment.Version.ToString(),mode="input timing on unshown Avalonia controls, then transparent native-window checks; synthetic data, no covers/network; not frame-time measurements",results,settings},new JsonSerializerOptions{WriteIndented=true}));
    return 0;
   } catch(Exception e){Console.Error.WriteLine(e);return 1;}
   finally{Directory.Delete(root,true);}

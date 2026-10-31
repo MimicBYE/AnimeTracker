@@ -37,13 +37,14 @@ internal static class SettingsFlowTests
         var settingsTask=window.Settings();var dialog=window.OwnedWindows.Single();dialog.Opacity=0;dialog.ShowInTaskbar=false;Dispatcher.UIThread.RunJobs();dialog.UpdateLayout();
         try
         {
-            var controls=dialog.GetLogicalDescendants().ToArray();var style=controls.OfType<ComboBox>().Single();var enabled=controls.OfType<CheckBox>().Single(c=>c.Content as string=="Показывать виджет");var startup=controls.OfType<CheckBox>().Single(c=>c.Content as string=="Запускать при входе в систему");bool? initialStartup=startup.IsChecked;
+            var controls=dialog.GetLogicalDescendants().ToArray();var style=controls.OfType<ComboBox>().Single(c=>Avalonia.Automation.AutomationProperties.GetName(c)=="Оформление виджета");var enabled=controls.OfType<CheckBox>().Single(c=>c.Content as string=="Показывать виджет");var startup=controls.OfType<CheckBox>().Single(c=>c.Content as string=="Запускать при входе в систему");bool? initialStartup=startup.IsChecked;
+            var theme=controls.OfType<ComboBox>().Single(c=>Avalonia.Automation.AutomationProperties.GetName(c)=="Тема приложения");theme.SelectedIndex=1;
             style.SelectedIndex=2;enabled.IsChecked=false;startup.IsChecked=initialStartup!=true;
             var import=Button(dialog,"Импорт XML из MyAnimeList");
             void DraftIntact()
             {
                 Check(dialog.IsVisible&&!settingsTask.IsCompleted,"Import dismissed Settings");
-                Check(style.SelectedIndex==2&&enabled.IsChecked==false&&startup.IsChecked==(initialStartup!=true),"Import lost the settings draft");
+                Check(theme.SelectedIndex==1&&!store.Appearance.Dark&&style.SelectedIndex==2&&enabled.IsChecked==false&&startup.IsChecked==(initialStartup!=true),"Import lost the settings draft");
                 Check(store.Widget.Style==0&&store.Widget.Enabled&&File.ReadAllText(widgetPath)==originalWidget,"Import applied widget settings implicitly");
                 var startupProperty=typeof(MainWindow).Assembly.GetType("AnimeTracker.Desktop.MacIntegration")!.GetProperty("AutoStartEnabled")!;
                 Check((bool)startupProperty.GetValue(null)! == (initialStartup==true),"Import changed OS autostart");
@@ -73,7 +74,7 @@ internal static class SettingsFlowTests
                 Capture(window,screenshots,"library-scale-"+(int)(scale*100),scale);Capture(dialog,screenshots,"settings-scale-"+(int)(scale*100),scale);
                 scales.Add(new{scale,libraryClient=window.ClientSize.ToString(),settingsClient=dialog.ClientSize.ToString(),scrollOffset=scroll.Offset.Y,scrollExtent=scroll.Extent.Height,scrollViewport=scroll.Viewport.Height,checks="search/add in bounds, fixed footer in bounds, import reachable by scroll; logical-viewport and bitmap DPI emulation, not native OS scaling"});
             }
-            Click(Button(dialog,"Закрыть"));PumpUntil(()=>settingsTask.IsCompleted);Check(settingsTask.IsCompletedSuccessfully&&store.ModalDepth==0,"Settings modal depth leaked");Check(File.ReadAllText(widgetPath)==originalWidget,"Closing Settings applied draft");
+            Click(Button(dialog,"Закрыть"));PumpUntil(()=>settingsTask.IsCompleted);Check(settingsTask.IsCompletedSuccessfully&&store.ModalDepth==0,"Settings modal depth leaked");Check(File.ReadAllText(widgetPath)==originalWidget&&!store.Appearance.Dark,"Closing Settings applied draft");
             return new{checks="file cancellation, preview cancellation, explicit import, invalid import, owned dialogs, draft retained, widget/autostart not applied, close discards draft",scales};
         }
         finally{foreach(var child in dialog.OwnedWindows.ToArray())child.Close();dialog.Close();typeof(App).GetProperty("Quitting")!.SetValue(App.CurrentApp,true);window.Close();}

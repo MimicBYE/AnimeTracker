@@ -1,4 +1,4 @@
-﻿using System.Net.Http;
+using System.Net.Http;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -13,7 +13,8 @@ namespace AnimeTracker.Desktop;
 
 internal static class Paper
 {
-    public static readonly IBrush Ink=Brush.Parse("#47361D"),Muted=Brush.Parse("#725932"),Accent=Brush.Parse("#B9862C"),Sheet=Brush.Parse("#FFF2BA");
+    public static IBrush Color(string light)=>DesktopTheme.Brush(light);
+    public static readonly IBrush Ink=Paper.Color("#47361D"),Muted=Paper.Color("#725932"),Accent=Paper.Color("#B9862C"),Sheet=Paper.Color("#FFF2BA");
     public static TextBlock Text(string text,double size=13,IBrush? brush=null)=>new(){Text=text,FontSize=size,Foreground=brush??Ink,TextWrapping=TextWrapping.Wrap};
     public static StackPanel Stack(params Control[] children){var panel=new StackPanel{Spacing=9};foreach(var child in children)panel.Children.Add(child);return panel;}
     public static WrapPanel Actions(params Control[] children){var panel=new WrapPanel{Orientation=Orientation.Horizontal};foreach(var child in children){child.Margin=new Thickness(0,0,7,7);panel.Children.Add(child);}return panel;}

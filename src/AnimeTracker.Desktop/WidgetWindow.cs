@@ -16,13 +16,13 @@ public sealed class WidgetWindow:Window
     readonly Covers covers;
     readonly CancellationTokenSource lifetime=new();
     readonly DispatcherTimer clicks=new(){Interval=TimeSpan.FromMilliseconds(350)};
-    readonly Border surface=new(){Background=Brush.Parse("#F5E5A6"),BorderBrush=Brush.Parse("#CFB06F"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(6,6,16,6),Padding=new Thickness(13,10)};
+    readonly Border surface=new(){Background=Paper.Color("#F5E5A6"),BorderBrush=Paper.Color("#CFB06F"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(6,6,16,6),Padding=new Thickness(13,10)};
     bool expanded,pressed,dragged;
     PixelPoint initialPointer,initialPosition;
     string PositionPath=>store.FilePath(OperatingSystem.IsLinux()?"linux-widget-position.xml":"mac-widget-position.xml");
     public WidgetWindow(AppStore store)
     {
-        this.store=store;covers=new Covers(store);Title="Anime Tracker · виджет";WindowDecorations=Avalonia.Controls.WindowDecorations.None;CanResize=false;ShowInTaskbar=false;ShowActivated=false;Background=Brush.Parse("#F5E5A6");Content=surface;
+        this.store=store;covers=new Covers(store);Title="Anime Tracker · виджет";WindowDecorations=Avalonia.Controls.WindowDecorations.None;CanResize=false;ShowInTaskbar=false;ShowActivated=false;Background=Paper.Color("#F5E5A6");Content=surface;
         store.Changed+=ApplyPreference;Render();clicks.Tick+=(_,_)=>{clicks.Stop();expanded=!expanded;Render();};
         Opened+=(_,_)=>{RestorePosition();DesktopIntegration.AttachWidget(this);};
         Closing+=(_,e)=>{if(!App.CurrentApp.Quitting){e.Cancel=true;Hide();}};

@@ -25,7 +25,7 @@ public partial class Tracker {
   var add=new Button{Content="＋ Добавить арку",IsEnabled=arcs!=null&&!storageBlocked};toolbar.Children.Add(add);
   var update=new Button{Content="Обновить отметки серий",IsEnabled=anime.MalId>0,Visibility=catalog==null?Visibility.Visible:Visibility.Collapsed};toolbar.Children.Add(update);
   var onlyFiller=new CheckBox{Content="Только филлеры",Margin=new Thickness(6),VerticalAlignment=VerticalAlignment.Center};toolbar.Children.Add(onlyFiller);
-  if(error.Length>0)panel.Children.Add(Text(error,12,Brushes.Firebrick));
+  if(error.Length>0)panel.Children.Add(Text(error,12,ThemeBrush("#B22222")));
   var info=Text("",12,Muted);panel.Children.Add(info);
   if(catalog!=null){
    info.Text="Локальный справочник · отметки до серии "+flags.Items.Keys.Max()+" · источник от "+catalog.Date;
@@ -47,15 +47,15 @@ public partial class Tracker {
     var edit=Btn("Изменить",delegate{EditArc(anime,owner,selected,arcs,path);render();});edit.IsEnabled=arcs!=null&&!storageBlocked;DockPanel.SetDock(edit,Dock.Right);row.Children.Add(edit);
     bool personal=arcs!=null&&arcs.Any(a=>a.Id==arc.Id&&a.AnimeId==anime.Id);
     var texts=new StackPanel();texts.Children.Add(Text(arc.Name,16,Ink));
-    texts.Children.Add(Text("Серии "+ArcCatalog.Format(episodes)+" · "+ArcData.Label(classification)+(personal?" · ваша разметка":" · справочник"),12,classification=="filler"?Brushes.Sienna:Muted));
+    texts.Children.Add(Text("Серии "+ArcCatalog.Format(episodes)+" · "+ArcData.Label(classification)+(personal?" · ваша разметка":" · справочник"),12,classification=="filler"?ThemeBrush("#A0522D"):Muted));
     texts.Children.Add(Text("Просмотрено: "+episodes.Count(n=>n<=anime.Watched)+" / "+episodes.Count+(episodes.Contains(next)?" · текущая арка":""),11,Muted));
-    if(hasFiller&&classification!="filler"&&arc.Type=="auto")texts.Children.Add(Text("Филлеры: "+ArcCatalog.Format(episodes.Where(n=>flags.Items.ContainsKey(n)&&flags.Items[n]=="filler")),11,Brushes.Sienna));
+    if(hasFiller&&classification!="filler"&&arc.Type=="auto")texts.Children.Add(Text("Филлеры: "+ArcCatalog.Format(episodes.Where(n=>flags.Items.ContainsKey(n)&&flags.Items[n]=="filler")),11,ThemeBrush("#A0522D")));
     row.Children.Add(texts);rows.Children.Add(row);
    }
    if(shown==0)rows.Children.Add(Text(onlyFiller.IsChecked==true?"Арки с отмеченными филлерами не найдены.":"Именованных арок пока нет. Их можно добавить вручную.",12,Muted));
    if(arcs!=null&&catalog!=null&&arcs.Any(a=>a.AnimeId==anime.Id&&a.CatalogKey!=""))rows.Children.Add(Btn("Сбросить правки справочных арок",delegate{if(storageBlocked)return;try{var updated=arcs.Where(a=>a.AnimeId!=anime.Id||a.CatalogKey=="").ToList();service.SaveArcs(updated);arcs.Clear();arcs.AddRange(updated);render();}catch(Exception ex){info.Text=ex.Message;}}));
    var ranges=new Expander{Header="Отметки по сериям · "+(catalog==null?"Jikan / MyAnimeList":"AnimeFillerList"),Margin=new Thickness(0,12,0,0),Foreground=Ink};var list=new StackPanel();ranges.Content=list;rows.Children.Add(ranges);
-   foreach(var range in ArcData.Ranges(flags)){if(onlyFiller.IsChecked==true&&range.Type!="filler")continue;list.Children.Add(Text((range.From==range.To?"Серия "+range.From:"Серии "+range.From+"–"+range.To)+" · "+ArcData.Label(range.Type),12,range.Type=="filler"?Brushes.Sienna:Muted));}
+   foreach(var range in ArcData.Ranges(flags)){if(onlyFiller.IsChecked==true&&range.Type!="filler")continue;list.Children.Add(Text((range.From==range.To?"Серия "+range.From:"Серии "+range.From+"–"+range.To)+" · "+ArcData.Label(range.Type),12,range.Type=="filler"?ThemeBrush("#A0522D"):Muted));}
    if(flags.Items.Count==0)list.Children.Add(Text("Отметок пока нет. Источник может не содержать серии для этого тайтла.",12,Muted));
   };
   Func<bool,Task> load=async delegate(bool force){if(catalog!=null||busy||anime.MalId<=0||token.IsCancellationRequested)return;if(!force&&flags.Checked!=DateTime.MinValue&&DateTime.UtcNow-flags.Checked<TimeSpan.FromHours(6)){info.Text="Сохранённые отметки на "+flags.Checked.ToLocalTime().ToString("dd.MM HH:mm");return;}busy=true;update.IsEnabled=false;try{flags=await ArcData.Fetch(anime.MalId,cache,token,(page,total)=>{info.Text="Загрузка отметок: страница "+page+" / "+total;});if(!token.IsCancellationRequested)info.Text="Получено отметок: "+flags.Items.Count+" · Jikan / MyAnimeList";}catch(Exception){if(!token.IsCancellationRequested)info.Text="Источник сейчас недоступен. Сохранённые отметки и ваши арки доступны.";}finally{busy=false;if(!token.IsCancellationRequested){update.IsEnabled=true;render();}}};
@@ -69,7 +69,7 @@ public partial class Tracker {
   var name=new TextBox{Text=existing==null?"":existing.Name,MaxLength=120,Margin=new Thickness(0,5,0,12)};panel.Children.Add(name);
   panel.Children.Add(Text("Серии · например: 1–12, 15, 18–24",12,Muted));var intervals=new TextBox{Text=existing==null?"1":ArcCatalog.Format(ArcCatalog.Episodes(existing)),Margin=new Thickness(0,5,0,12)};panel.Children.Add(intervals);
   panel.Children.Add(Text("Тип",12,Muted));var type=new ComboBox{ItemsSource=ArcData.Labels,SelectedIndex=existing==null?0:Array.IndexOf(ArcData.Types,existing.Type),Margin=new Thickness(0,5,0,12)};panel.Children.Add(type);
-  panel.Children.Add(Text("Ваши правки имеют приоритет над справочником. Статус и прогресс просмотра не меняются.",12,Muted));var error=Text("",12,Brushes.Firebrick);panel.Children.Add(error);var buttons=new WrapPanel{Margin=new Thickness(0,16,0,0)};panel.Children.Add(buttons);
+  panel.Children.Add(Text("Ваши правки имеют приоритет над справочником. Статус и прогресс просмотра не меняются.",12,Muted));var error=Text("",12,ThemeBrush("#B22222"));panel.Children.Add(error);var buttons=new WrapPanel{Margin=new Thickness(0,16,0,0)};panel.Children.Add(buttons);
   Action<List<AnimeArc>> save=delegate(List<AnimeArc> updated){service.SaveArcs(updated);arcs.Clear();arcs.AddRange(updated);window.Close();};
   buttons.Children.Add(Btn("Сохранить арку",delegate{if(storageBlocked)return;try{
    var changed=new AnimeArc{Id=existing==null?Guid.NewGuid().ToString():existing.Id,AnimeId=anime.Id,Name=name.Text.Trim(),Type=ArcData.Types[Math.Max(0,type.SelectedIndex)],CatalogKey=existing==null?"":existing.CatalogKey};

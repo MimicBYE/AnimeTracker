@@ -19,7 +19,7 @@ public partial class Tracker {
   var text=new TextBox { Text=anime.Notes,AcceptsReturn=true,TextWrapping=TextWrapping.Wrap,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,MaxLength=20000 };
   var bottom=new StackPanel { Margin=new Thickness(0,12,0,0) }; DockPanel.SetDock(bottom,Dock.Bottom); panel.Children.Add(bottom);
   bottom.Children.Add(Text("Личная заметка · сохраняется только на этом компьютере",11,Muted));
-  var error=Text("",12,Brushes.Firebrick); bottom.Children.Add(error); var actions=new StackPanel { Orientation=Orientation.Horizontal,Margin=new Thickness(0,8,0,0) }; bottom.Children.Add(actions);
+  var error=Text("",12,ThemeBrush("#B22222")); bottom.Children.Add(error); var actions=new StackPanel { Orientation=Orientation.Horizontal,Margin=new Thickness(0,8,0,0) }; bottom.Children.Add(actions);
   var save=Btn("Сохранить",delegate { if(storageBlocked) return; try { service.Notes(anime,text.Text); undo=null; Refresh(); window.Close(); } catch(Exception ex) { error.Text="Не удалось сохранить: "+ex.Message; } }); save.IsEnabled=!storageBlocked; actions.Children.Add(save);
   var cancel=Btn("Отмена",delegate { window.Close(); }); cancel.IsCancel=true; actions.Children.Add(cancel); panel.Children.Add(text);
   window.Loaded+=delegate { text.Focus(); text.CaretIndex=text.Text.Length; }; window.ShowDialog();
@@ -38,7 +38,7 @@ public partial class Tracker {
   Func<Anime[]> selected=()=>library.Items.Where(a=>a.Status=="watching" || (planned.IsChecked==true && a.Status=="planned")).ToArray();
   Action render=null;
   Func<Anime,string,UIElement> card=delegate(Anime a,string caption) {
-   var dock=new DockPanel { Margin=new Thickness(0,6,0,8),Background=new SolidColorBrush(Color.FromRgb(255,249,225)) };
+   var dock=new DockPanel { Margin=new Thickness(0,6,0,8),Background=ThemeBrush(Color.FromRgb(255,249,225)) };
    var button=Btn(a.Notes.Length>0?"Заметки •":"Заметки",delegate { OpenAnimeCard(a,owner); render(); }); button.Margin=new Thickness(10); button.VerticalAlignment=VerticalAlignment.Center; DockPanel.SetDock(button,Dock.Right); dock.Children.Add(button);
    var texts=new StackPanel { Margin=new Thickness(12) }; texts.Children.Add(Text(a.Title,16,Ink)); texts.Children.Add(Text(caption+" · "+MalImport.StatusLabel(a.Status),12,Muted)); dock.Children.Add(texts); return dock;
   };
@@ -58,14 +58,14 @@ public partial class Tracker {
    rows.Children.Add(grid);
    for(int i=0;i<days;i++) {
     var day=start.AddDays(i); bool isToday=day.Date==now.Date,otherMonth=month && day.Month!=monthStart.Month;
-    var cell=new Border { MinHeight=month?82:240,Margin=new Thickness(2),Padding=new Thickness(6),CornerRadius=new CornerRadius(4),Background=new SolidColorBrush(isToday?Color.FromRgb(245,225,164):otherMonth?Color.FromRgb(244,235,205):Color.FromRgb(255,249,225)),BorderBrush=isToday?Accent:new SolidColorBrush(Color.FromRgb(225,207,157)),BorderThickness=new Thickness(isToday?2:1) };
+    var cell=new Border { MinHeight=month?82:240,Margin=new Thickness(2),Padding=new Thickness(6),CornerRadius=new CornerRadius(4),Background=ThemeBrush(isToday?Color.FromRgb(245,225,164):otherMonth?Color.FromRgb(244,235,205):Color.FromRgb(255,249,225)),BorderBrush=isToday?Accent:ThemeBrush(Color.FromRgb(225,207,157)),BorderThickness=new Thickness(isToday?2:1) };
     var content=new StackPanel(); cell.Child=content; Grid.SetColumn(cell,i%7); Grid.SetRow(cell,i/7+1); grid.Children.Add(cell);
     var heading=Text(day.Day.ToString()+(isToday?" · сегодня":""),12,otherMonth?Muted:Ink); heading.Margin=new Thickness(0,0,0,5); content.Children.Add(heading);
     var events=items.Where(a=>schedule.ContainsKey(a.CatalogId) && schedule[a.CatalogId].Next.HasValue && CalendarNotes.Moscow(schedule[a.CatalogId].Next.Value).Date==day).OrderBy(a=>schedule[a.CatalogId].Next).ToArray();
     foreach(var a in events) {
      var entry=schedule[a.CatalogId]; var date=CalendarNotes.Moscow(entry.Next.Value);
      var button=Btn("",delegate { OpenAnimeCard(a,owner); render(); }); button.Margin=new Thickness(0,2,0,2); button.Padding=new Thickness(5); button.HorizontalContentAlignment=HorizontalAlignment.Stretch;
-     button.Background=new SolidColorBrush(Color.FromRgb(235,215,152)); button.ToolTip=a.Title+"\n"+date.ToString("dd.MM HH:mm")+" МСК · "+MalImport.StatusLabel(a.Status)+(date<now?"\nДата прошла — обновите расписание":"")+"\nНажмите, чтобы открыть карточку";
+     button.Background=ThemeBrush(Color.FromRgb(235,215,152)); button.ToolTip=a.Title+"\n"+date.ToString("dd.MM HH:mm")+" МСК · "+MalImport.StatusLabel(a.Status)+(date<now?"\nДата прошла — обновите расписание":"")+"\nНажмите, чтобы открыть карточку";
      var eventText=new StackPanel(); eventText.Children.Add(Text(date.ToString("HH:mm"),12,Ink));
      var title=Text(a.Title,11,Ink); title.MaxHeight=44; title.TextTrimming=TextTrimming.CharacterEllipsis; eventText.Children.Add(title); button.Content=eventText; content.Children.Add(button);
     }

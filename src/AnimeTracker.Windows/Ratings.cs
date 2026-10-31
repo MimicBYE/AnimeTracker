@@ -60,7 +60,7 @@ public partial class Tracker {
          try { service.Personal(owned,value,rating); undo=null; Refresh(); feedback.Text="Сохранено"; }
          catch(Exception ex) {
           restoring=true; status.SelectedIndex=Array.IndexOf(MalImport.StatusKeys,owned.Status); score.SelectedIndex=owned.Score; restoring=false;
-          feedback.Text="Не сохранено"; MessageBox.Show(window,"Не удалось сохранить изменения:\n"+ex.Message,"Ошибка сохранения");
+          feedback.Text="Не сохранено"; ShowMessage(window,"Не удалось сохранить изменения:\n"+ex.Message,"Ошибка сохранения");
          }
         };
         status.SelectionChanged+=delegate { if(status.SelectedIndex>=0) save(MalImport.StatusKeys[status.SelectedIndex],null); };
@@ -78,7 +78,7 @@ public partial class Tracker {
         if(storageBlocked) return;
         add.IsEnabled=false;
         try { service.Add(a); undo=null; Refresh(); bindAdd(); }
-        catch(Exception ex) { add.IsEnabled=true; MessageBox.Show(window,"Не удалось добавить аниме:\n"+ex.Message,"Ошибка сохранения"); }
+        catch(Exception ex) { add.IsEnabled=true; ShowMessage(window,"Не удалось добавить аниме:\n"+ex.Message,"Ошибка сохранения"); }
        };
       }; bindAdd(); refreshActions.Add(bindAdd);
       var cover=new Image { Width=48,Height=70,Stretch=Stretch.UniformToFill,Margin=new Thickness(0,0,12,0) }; DockPanel.SetDock(cover,Dock.Left); row.Children.Add(cover); LoadCover(cover,a.Id,a.CoverUrl,lifetime.Token);

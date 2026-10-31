@@ -21,6 +21,7 @@ src/AnimeTracker.Windows/Version.cs
 src/AnimeTracker.Core/Domain.cs
 src/AnimeTracker.Core/LibraryStorage.cs
 src/AnimeTracker.Core/TrackerFiles.cs
+src/AnimeTracker.Core/Appearance.cs
 src/AnimeTracker.Core/TrackerService.cs
 src/AnimeTracker.Core/TrackerRefresh.cs
 src/AnimeTracker.Core/TrackerTransfers.cs
@@ -31,3 +32,8 @@ src/AnimeTracker.Core/Catalog.cs
 src/AnimeTracker.Core/JsonCodec.cs
 
 src/AnimeTracker.Windows/Settings.cs
+
+src/AnimeTracker.Windows/ThemeResources.cs
+src/AnimeTracker.Windows/WindowsTheme.cs
+tests/Shared/AppearanceTests.cs
+src/AnimeTracker.Windows/ThemeTests.cs

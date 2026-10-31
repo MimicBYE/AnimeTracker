@@ -15,7 +15,7 @@ public partial class Tracker {
  event Action WatchChoicesChanged;
 
  bool ChangeWatchChoices(Action<WatchChoices> edit,Window owner){
-  if(watchChoicesBlocked)return false;try{service.ChangeChoices(edit);}catch(Exception ex){MessageBox.Show(owner,"Не удалось сохранить очередь или скрытые аниме:\n"+ex.Message,"Ошибка сохранения");return false;}
+  if(watchChoicesBlocked)return false;try{service.ChangeChoices(edit);}catch(Exception ex){ShowMessage(owner,"Не удалось сохранить очередь или скрытые аниме:\n"+ex.Message,"Ошибка сохранения");return false;}
   if(WatchChoicesChanged!=null)WatchChoicesChanged();return true;
  }
  void QueueCardButton(Anime anime,Window owner,Panel panel){
@@ -34,7 +34,7 @@ public partial class Tracker {
    var active=watchChoices.Active(library);info.Text=watchChoicesBlocked?"Список недоступен для изменений: не удалось прочитать сохранённый файл.":"В очереди: "+active.Length;
    if(active.Length==0)rows.Children.Add(Text("Добавьте тайтл из списка сверху, карточки аниме или подбора «На вечер».",15,Muted));
    for(int i=0;i<active.Length;i++){
-    var anime=active[i];var row=new DockPanel{Background=new SolidColorBrush(Color.FromRgb(255,249,225)),Margin=new Thickness(0,0,0,12)};var actions=new WrapPanel{Width=210,Margin=new Thickness(10),VerticalAlignment=VerticalAlignment.Center};DockPanel.SetDock(actions,Dock.Right);row.Children.Add(actions);
+    var anime=active[i];var row=new DockPanel{Background=ThemeBrush(Color.FromRgb(255,249,225)),Margin=new Thickness(0,0,0,12)};var actions=new WrapPanel{Width=210,Margin=new Thickness(10),VerticalAlignment=VerticalAlignment.Center};DockPanel.SetDock(actions,Dock.Right);row.Children.Add(actions);
     var up=Btn("↑",delegate{ChangeWatchChoices(next=>next.Move(anime.Id,-1,library),owner);});up.IsEnabled=!watchChoicesBlocked&&i>0;actions.Children.Add(up);var down=Btn("↓",delegate{ChangeWatchChoices(next=>next.Move(anime.Id,1,library),owner);});down.IsEnabled=!watchChoicesBlocked&&i<active.Length-1;actions.Children.Add(down);
     var remove=Btn("Убрать",delegate{ChangeWatchChoices(next=>next.Queue.Remove(anime.Id),owner);});remove.IsEnabled=!watchChoicesBlocked;actions.Children.Add(remove);
     actions.Children.Add(Btn(anime.Status=="watching"?"Продолжить":"Начать",delegate{if(storageBlocked)return;try{if(anime.Status!="watching"){service.Personal(anime,"watching",null);Refresh();}OpenAnimeCard(anime,owner);render();}catch(Exception ex){info.Text=ex.Message;}}));
