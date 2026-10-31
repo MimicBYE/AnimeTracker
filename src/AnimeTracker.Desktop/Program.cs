@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
@@ -47,7 +47,7 @@ public sealed partial class App : Application
     TrayIcon? tray;
     bool updating;
     public bool Quitting { get; private set; }
-    public override void Initialize() => AvaloniaXamlLoader.Load(this);
+    public override void Initialize() {AvaloniaXamlLoader.Load(this);DesktopTheme.Apply(false);}
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)

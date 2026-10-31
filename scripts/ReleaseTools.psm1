@@ -97,7 +97,7 @@ function Test-ReleasePackages {
     param([Parameter(Mandatory)][string]$Directory,[string]$BaseVersion,[string]$PackageVersion,[string]$Channel,[string]$Commit)
     $null=New-BuildInfo $BaseVersion $PackageVersion $Channel $Commit
     Add-Type -AssemblyName System.IO.Compression.FileSystem
-    $blocked='(^|/)(data|covers|imports|bin|obj|artifacts|\.git|\.tools)(/|$)|(^|/)(library|watch-choices|widget-settings|view-settings|personal-order|arcs)\.xml$|(^|/)\.env($|\.)|\.(pfx|p12|pem|key|pdb|tmp|bak)$'
+    $blocked='(^|/)(data|covers|imports|bin|obj|artifacts|\.git|\.tools)(/|$)|(^|/)(library|watch-choices|widget-settings|appearance-settings|view-settings|personal-order|arcs)\.xml$|(^|/)\.env($|\.)|\.(pfx|p12|pem|key|pdb|tmp|bak)$'
     foreach($asset in Get-ReleaseAssets $Directory $PackageVersion) {
         if($asset.Name.EndsWith('-linux-x64.tar.gz')){Import-Module (Join-Path $PSScriptRoot 'LinuxPackage.psm1') -Force;Test-LinuxPackage $asset.Path $BaseVersion $PackageVersion $Channel $Commit;continue}
         $zip=[IO.Compression.ZipFile]::OpenRead($asset.Path)

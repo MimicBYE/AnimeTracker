@@ -9,7 +9,7 @@ public sealed class TrackerFiles {
  public string Root {get;private set;}
  public string ConfigRoot {get;private set;}
  public string CacheRoot {get;private set;}
- static readonly string[] Settings={"view-settings.xml","widget-settings.xml","mac-widget-position.xml","linux-widget-position.xml"};
+ static readonly string[] Settings={"view-settings.xml","widget-settings.xml","appearance-settings.xml","mac-widget-position.xml","linux-widget-position.xml"};
  static readonly string[] Caches={"schedule.xml","evening-cache.xml","top-kinds.xml"};
  public TrackerFiles(string root) : this(root,root,root) {}
  public TrackerFiles(string root,string config,string cache) {Root=Absolute(root);ConfigRoot=Absolute(config);CacheRoot=Absolute(cache);}
@@ -41,6 +41,7 @@ public sealed class TrackerFiles {
  public string Choices {get{return PathFor("watch-choices.xml");}}
  public string View {get{return PathFor("view-settings.xml");}}
  public string Widget {get{return PathFor("widget-settings.xml");}}
+ public string Appearance {get{return PathFor("appearance-settings.xml");}}
  public string Order {get{return PathFor("personal-order.xml");}}
  public string Arcs {get{return PathFor("arcs.xml");}}
  public string Schedule {get{return PathFor("schedule.xml");}}

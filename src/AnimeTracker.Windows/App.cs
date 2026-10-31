@@ -43,9 +43,9 @@ public partial class Tracker : Application {
  double dragLeft, dragTop;
  System.Windows.Threading.DispatcherTimer clickTimer, desktopTimer;
  static System.Threading.Mutex mutex;
- static Brush Ink = new SolidColorBrush(Color.FromRgb(71,54,29));
- static Brush Muted = new SolidColorBrush(Color.FromRgb(114,89,50));
- static Brush Accent = new SolidColorBrush(Color.FromRgb(185,134,44));
+ static Brush Ink {get{return ThemeBrush("#47361D");}}
+ static Brush Muted {get{return ThemeBrush("#725932");}}
+ static Brush Accent {get{return ThemeBrush("#B9862C");}}
  [DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr hwnd,int attribute,ref int value,int size);
  void StyleWindow(Window window) {
   using(var stream=System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("AnimeTracker.Icon")) {
@@ -53,16 +53,12 @@ public partial class Tracker : Application {
    icon.Freeze(); window.Icon=icon;
   }
   window.SourceInitialized+=delegate {
-   var hwnd=new WindowInteropHelper(window).Handle;
-   int paper=0x00CCEEF8;
-   int ink=0x001D3647, border=0x006FB4D0;
-   DwmSetWindowAttribute(hwnd,35,ref paper,4);
-   DwmSetWindowAttribute(hwnd,36,ref ink,4);
-   DwmSetWindowAttribute(hwnd,34,ref border,4);
+   ApplyWindowTheme(window);
   };
  }
  [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
  [STAThread] public static void Main(string[] args) {
+  if (args.Contains("--theme-test")) { ThemeTest(args); return; }
   if (args.Contains("--self-test")) { SelfTest(); return; }
   if (args.Contains("--top-export-test")) { VerifyTopExport(); return; }
   if (args.Contains("--import-test")) { try { File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"import-test.txt"),MalImportTests.Run()); } catch(Exception ex) { File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"import-test.txt"),"FAIL "+ex); Environment.ExitCode=1; } return; }
@@ -71,21 +67,19 @@ public partial class Tracker : Application {
   StartupDiagnostics.Write(args.Contains("--startup")?"starting startup":"starting manual");
   try {
    bool created;mutex = new System.Threading.Mutex(true,"Local\\AnimeTracker.Desktop",out created);
-   if (!created) {StartupDiagnostics.Write("already-running");if(!args.Contains("--startup"))MessageBox.Show("Трекер уже запущен. Откройте его через значок в трее.","Anime Tracker");return;}
+   if (!created) {StartupDiagnostics.Write("already-running");if(!args.Contains("--startup"))ShowMessage("Трекер уже запущен. Откройте его через значок в трее.","Anime Tracker");return;}
    var app = new Tracker();app.ShutdownMode = ShutdownMode.OnExplicitShutdown;app.Run();GC.KeepAlive(mutex);
   } catch(Exception ex) {StartupDiagnostics.Write("failed",ex);try{File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"startup-error.txt"),ex.ToString());}catch{}Environment.ExitCode=1;}
  }
  protected override void OnStartup(StartupEventArgs e) {
+  if(isolatedThemeTest)return;
   base.OnStartup(e);
   StartupDiagnostics.Write("initializing");
-  Resources = (ResourceDictionary)XamlReader.Parse(@"<ResourceDictionary xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml'>
-  <Style TargetType='Button'><Setter Property='Foreground' Value='#47361D'/><Setter Property='Background' Value='#EAD490'/><Setter Property='Padding' Value='10,7'/><Setter Property='Margin' Value='0,0,6,0'/><Setter Property='Cursor' Value='Hand'/><Setter Property='BorderThickness' Value='0'/><Setter Property='Template'><Setter.Value><ControlTemplate TargetType='Button'><Border x:Name='b' Background='{TemplateBinding Background}' CornerRadius='6' Padding='{TemplateBinding Padding}' RenderTransformOrigin='0.5,0.5'><Border.RenderTransform><ScaleTransform/></Border.RenderTransform><ContentPresenter HorizontalAlignment='Center' VerticalAlignment='Center'/></Border><ControlTemplate.Triggers><Trigger Property='IsMouseOver' Value='True'><Trigger.EnterActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName='b' Storyboard.TargetProperty='Opacity' To='0.82' Duration='0:0:0.16'/></Storyboard></BeginStoryboard></Trigger.EnterActions><Trigger.ExitActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName='b' Storyboard.TargetProperty='Opacity' To='1' Duration='0:0:0.22'/></Storyboard></BeginStoryboard></Trigger.ExitActions></Trigger><Trigger Property='IsPressed' Value='True'><Trigger.EnterActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName='b' Storyboard.TargetProperty='(UIElement.RenderTransform).(ScaleTransform.ScaleX)' To='0.96' Duration='0:0:0.08'/><DoubleAnimation Storyboard.TargetName='b' Storyboard.TargetProperty='(UIElement.RenderTransform).(ScaleTransform.ScaleY)' To='0.96' Duration='0:0:0.08'/></Storyboard></BeginStoryboard></Trigger.EnterActions><Trigger.ExitActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName='b' Storyboard.TargetProperty='(UIElement.RenderTransform).(ScaleTransform.ScaleX)' To='1' Duration='0:0:0.18'/><DoubleAnimation Storyboard.TargetName='b' Storyboard.TargetProperty='(UIElement.RenderTransform).(ScaleTransform.ScaleY)' To='1' Duration='0:0:0.18'/></Storyboard></BeginStoryboard></Trigger.ExitActions></Trigger><Trigger Property='IsEnabled' Value='False'><Setter TargetName='b' Property='Opacity' Value='0.4'/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
-  <Style TargetType='TextBox'><Setter Property='Background' Value='#FFF8DF'/><Setter Property='Foreground' Value='#47361D'/><Setter Property='CaretBrush' Value='#47361D'/><Setter Property='BorderBrush' Value='#D6C18B'/><Setter Property='Padding' Value='10,8'/><Setter Property='FontSize' Value='14'/></Style>
-  <Style TargetType='Window'><Setter Property='FontFamily' Value='Segoe UI'/><Setter Property='Foreground' Value='#47361D'/><Setter Property='Background' Value='#F8EECC'/></Style>
-  </ResourceDictionary>");
-  using(var theme=System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("AnimeTracker.DropdownTheme")) Resources.MergedDictionaries.Add((ResourceDictionary)XamlReader.Load(theme));
+  InitializeThemeResources();
   service=new TrackerService(Path.GetDirectoryName(dataPath));
-  if(service.Error.Length>0)MessageBox.Show(service.Error,storageBlocked?"Ошибка загрузки":"Загрузка данных");
+  service.AppearanceChanged+=ApplyAppearance;ApplyAppearance();
+  service.Changed+=ApplyAppearance;
+  if(service.Error.Length>0)ShowMessage(service.Error,storageBlocked?"Ошибка загрузки":"Загрузка данных");
   preferences=service.View;
   StartupDiagnostics.Write("library-loaded");
 
@@ -128,16 +122,16 @@ public partial class Tracker : Application {
  }
  TextBlock Text(string text, double size, Brush brush) { return new TextBlock { Text=text, FontSize=size, Foreground=brush, TextWrapping=TextWrapping.Wrap }; }
  Button Btn(string text, Action action) { var b = new Button { Content=text }; b.Click += delegate { action(); }; return b; }
- Button Primary(Button button) { button.Background=new SolidColorBrush(Color.FromRgb(221,180,74));button.Foreground=Ink;button.FontWeight=FontWeights.SemiBold;return button; }
+ Button Primary(Button button) { button.Background=ThemeBrush(Color.FromRgb(221,180,74));button.Foreground=ThemeBrush("#241B0B");button.FontWeight=FontWeights.SemiBold;return button; }
  Button Quiet(Button button) { button.Background=Brushes.Transparent;button.Foreground=Muted;return button; }
- void Persist() { if (storageBlocked) return; try { service.Save(); } catch (Exception ex) { MessageBox.Show("Не удалось сохранить изменения:\n" + ex.Message,"Ошибка сохранения"); } }
+ void Persist() { if (storageBlocked) return; try { service.Save(); } catch (Exception ex) { ShowMessage("Не удалось сохранить изменения:\n" + ex.Message,"Ошибка сохранения"); } }
  void BuildWidget() {
   StopWidgetAnimation();
   if(clickTimer!=null) clickTimer.Stop();
   expanded=false;
-  widget = new Window { Title="Anime Tracker • виджет", Width=CompactSize().Width, Height=CompactSize().Height, WindowStyle=WindowStyle.None, AllowsTransparency=false, Background=new SolidColorBrush(Color.FromRgb(249,231,165)), ShowInTaskbar=false, ResizeMode=ResizeMode.NoResize, ShowActivated=false };
+  widget = new Window { Title="Anime Tracker • виджет", Width=CompactSize().Width, Height=CompactSize().Height, WindowStyle=WindowStyle.None, AllowsTransparency=false, Background=ThemeBrush(Color.FromRgb(249,231,165)), ShowInTaskbar=false, ResizeMode=ResizeMode.NoResize, ShowActivated=false };
   if(compactCoverRequest!=null) { compactCoverRequest.Cancel(); compactCoverRequest.Dispose(); compactCoverRequest=null; } compactCoverId=-1;
-  widgetSurface=new Border { Background=Paper(), BorderBrush=new SolidColorBrush(Color.FromRgb(208,180,111)), BorderThickness=new Thickness(1), CornerRadius=new CornerRadius(3,3,16,3), Padding=new Thickness(14,10,12,10) };
+  widgetSurface=new Border { Background=Paper(), BorderBrush=ThemeBrush(Color.FromRgb(208,180,111)), BorderThickness=new Thickness(1), CornerRadius=new CornerRadius(3,3,16,3), Padding=new Thickness(14,10,12,10) };
   widget.Content=widgetSurface;
   var layout=new Grid(); widgetSurface.Child=layout;
   var small=new StackPanel { Name="Compact" };
@@ -151,13 +145,13 @@ public partial class Tracker : Application {
   compactPlus=Btn("+1",delegate { var a=WidgetAnime(); if(a!=null && !a.Completed) Increment(a); }); compactPlus.Margin=new Thickness(6,0,0,0); compactPlus.VerticalAlignment=VerticalAlignment.Center; DockPanel.SetDock(compactPlus,Dock.Right); summary.Children.Add(compactPlus);
   compactCover=new Image { Width=40,Height=58,Stretch=Stretch.UniformToFill,Margin=new Thickness(0,0,9,0),VerticalAlignment=VerticalAlignment.Top };
   DockPanel.SetDock(compactCover,Dock.Left); summary.Children.Add(compactCover);
-  var titles=new StackPanel(); compactTitle=Text("Добавьте первую историю",14,Ink); compactTitle.FontWeight=FontWeights.SemiBold; compactTitle.TextWrapping=TextWrapping.NoWrap; compactTitle.TextTrimming=TextTrimming.CharacterEllipsis; titles.Children.Add(compactTitle); compactProgress=Text("клик — раскрыть",11,Muted); compactProgress.Margin=new Thickness(0,4,0,0); titles.Children.Add(compactProgress); widgetProgressBar=new ProgressBar {Minimum=0,Maximum=1,Height=3,Margin=new Thickness(0,5,0,0),Foreground=Accent,Background=new SolidColorBrush(Color.FromRgb(232,213,157)),BorderThickness=new Thickness(0)}; titles.Children.Add(widgetProgressBar); summary.Children.Add(titles); small.Children.Add(summary); layout.Children.Add(small);
+  var titles=new StackPanel(); compactTitle=Text("Добавьте первую историю",14,Ink); compactTitle.FontWeight=FontWeights.SemiBold; compactTitle.TextWrapping=TextWrapping.NoWrap; compactTitle.TextTrimming=TextTrimming.CharacterEllipsis; titles.Children.Add(compactTitle); compactProgress=Text("клик — раскрыть",11,Muted); compactProgress.Margin=new Thickness(0,4,0,0); titles.Children.Add(compactProgress); widgetProgressBar=new ProgressBar {Minimum=0,Maximum=1,Height=3,Margin=new Thickness(0,5,0,0),Foreground=Accent,Background=ThemeBrush(Color.FromRgb(232,213,157)),BorderThickness=new Thickness(0)}; titles.Children.Add(widgetProgressBar); summary.Children.Add(titles); small.Children.Add(summary); layout.Children.Add(small);
   widgetExpanded=new DockPanel { Visibility=Visibility.Collapsed }; layout.Children.Add(widgetExpanded);
   var header=new DockPanel { Margin=new Thickness(0,0,0,12) }; var open=Btn("↗",OpenLibrary); open.ToolTip="Открыть библиотеку"; open.Padding=new Thickness(6,2,6,2); DockPanel.SetDock(open,Dock.Right); header.Children.Add(open);
   var title=Text("Anime Tracker",20,Ink); title.FontFamily=new FontFamily("Georgia"); header.Children.Add(title); DockPanel.SetDock(header,Dock.Top); widgetExpanded.Children.Add(header);
   var bottom=new StackPanel { Margin=new Thickness(0,8,0,0) };
   var add=Btn("＋ Добавить аниме",delegate { Edit(null,null); }); add.Margin=new Thickness(0); bottom.Children.Add(add);
-  undoButton=Btn("↶ Отменить действие",delegate { if(undo!=null && !storageBlocked) { try {undo();undo=null;Refresh();}catch(Exception ex){MessageBox.Show("Не удалось отменить действие:\n"+ex.Message,"Ошибка сохранения");} } }); undoButton.FontSize=11; undoButton.Margin=new Thickness(0,6,0,0); bottom.Children.Add(undoButton); DockPanel.SetDock(bottom,Dock.Bottom); widgetExpanded.Children.Add(bottom);
+  undoButton=Btn("↶ Отменить действие",delegate { if(undo!=null && !storageBlocked) { try {undo();undo=null;Refresh();}catch(Exception ex){ShowMessage("Не удалось отменить действие:\n"+ex.Message,"Ошибка сохранения");} } }); undoButton.FontSize=11; undoButton.Margin=new Thickness(0,6,0,0); bottom.Children.Add(undoButton); DockPanel.SetDock(bottom,Dock.Bottom); widgetExpanded.Children.Add(bottom);
   widgetRows=new StackPanel(); widgetExpanded.Children.Add(new SmoothScrollViewer { Content=widgetRows, VerticalScrollBarVisibility=ScrollBarVisibility.Auto, HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled });
   var area=SystemParameters.WorkArea;
   widget.Left=library.Left < 0 ? area.Right-widget.Width-28 : Math.Max(area.Left,Math.Min(library.Left,area.Right-widget.Width));
@@ -183,9 +177,9 @@ public partial class Tracker : Application {
   ApplyWidgetStyle(); Refresh();
  }
  Brush Paper() {
-  var drawing=new DrawingGroup(); drawing.Children.Add(new GeometryDrawing(new SolidColorBrush(Color.FromRgb(249,231,165)),null,new RectangleGeometry(new Rect(0,0,80,24))));
-  drawing.Children.Add(new GeometryDrawing(null,new Pen(new SolidColorBrush(Color.FromArgb(28,155,119,50)),0.6),new LineGeometry(new Point(0,23.5),new Point(80,23.5))));
-  var random=new Random(42); for(int i=0;i<30;i++) drawing.Children.Add(new GeometryDrawing(new SolidColorBrush(Color.FromArgb(15,115,88,37)),null,new EllipseGeometry(new Point(random.Next(80),random.Next(23)),0.45,0.45)));
+  var drawing=new DrawingGroup(); drawing.Children.Add(new GeometryDrawing(ThemeBrush(Color.FromRgb(249,231,165)),null,new RectangleGeometry(new Rect(0,0,80,24))));
+  drawing.Children.Add(new GeometryDrawing(null,new Pen(ThemeBrush(Color.FromArgb(28,155,119,50)),0.6),new LineGeometry(new Point(0,23.5),new Point(80,23.5))));
+  var random=new Random(42); for(int i=0;i<30;i++) drawing.Children.Add(new GeometryDrawing(ThemeBrush(Color.FromArgb(15,115,88,37)),null,new EllipseGeometry(new Point(random.Next(80),random.Next(23)),0.45,0.45)));
   return new DrawingBrush(drawing) { TileMode=TileMode.Tile, ViewportUnits=BrushMappingMode.Absolute, Viewport=new Rect(0,0,80,24), Stretch=Stretch.None };
  }
  bool IsRowChild(DependencyObject obj) { while(obj!=null) { var fe=obj as FrameworkElement; if(fe!=null && fe.Tag as string=="row") return true; obj=VisualTreeHelper.GetParent(obj); } return false; }
@@ -232,7 +226,7 @@ public partial class Tracker : Application {
  void Increment(Anime a) {
   if(storageBlocked)return;
   try {var before=a.Copy();if(!service.Increment(a))return;undo=delegate{service.RestoreProgress(a,before);};Refresh();AnimateWidgetProgress(a);}
-  catch(Exception ex){MessageBox.Show("Не удалось сохранить серию:\n"+ex.Message,"Ошибка сохранения");}
+  catch(Exception ex){ShowMessage("Не удалось сохранить серию:\n"+ex.Message,"Ошибка сохранения");}
  }
  bool IsButtonChild(DependencyObject obj) { while (obj!=null) { if (obj is System.Windows.Controls.Primitives.ButtonBase || obj is System.Windows.Controls.Primitives.ScrollBar) return true; obj=VisualTreeHelper.GetParent(obj); } return false; }
  void BuildTray() {
@@ -245,11 +239,11 @@ public partial class Tracker : Application {
   menu.Items.Add("Вернуть виджет на экран",null,delegate { Dispatcher.Invoke(new Action(RestoreWidget)); });
   menu.Items.Add("Добавить аниме",null,delegate { Dispatcher.Invoke(new Action(delegate { Edit(null,null); })); });
   var startup=new Forms.ToolStripMenuItem("Запускать вместе с Windows") { Checked=AutoStart.Enabled };
-  startup.Click += delegate { try { AutoStart.Set(!AutoStart.Enabled); startup.Checked=AutoStart.Enabled; } catch(Exception ex) { MessageBox.Show("Не удалось изменить автозапуск: "+ex.Message); } }; menu.Items.Add(startup);
+  startup.Click += delegate { try { AutoStart.Set(!AutoStart.Enabled); startup.Checked=AutoStart.Enabled; } catch(Exception ex) { ShowMessage("Не удалось изменить автозапуск: "+ex.Message); } }; menu.Items.Add(startup);
   menu.Opening += delegate { startup.Checked=AutoStart.Enabled; };
   menu.Items.Add(new Forms.ToolStripSeparator());
   menu.Items.Add("Выход",null,delegate { Dispatcher.Invoke(new Action(delegate { Persist(); quitting=true; tray.Dispose(); Shutdown(); })); });
-  tray.ContextMenuStrip=menu; tray.DoubleClick += delegate { Dispatcher.Invoke(new Action(OpenLibrary)); };
+  tray.ContextMenuStrip=menu; ApplyTrayTheme(); tray.DoubleClick += delegate { Dispatcher.Invoke(new Action(OpenLibrary)); };
  }
  void OpenLibrary() {
   if (full!=null) { full.Show(); full.WindowState=WindowState.Normal; full.Activate(); return; }
@@ -281,7 +275,7 @@ public partial class Tracker : Application {
  void SaveView() {
   if(search==null || filter==null || sortChoice==null) return;
   preferences.Search=search.Text; preferences.Sort=Math.Max(0,sortChoice.SelectedIndex); preferences.Status=filter.SelectedIndex<=0?"":MalImport.StatusKeys[filter.SelectedIndex-1];
-  try { service.SaveView(); } catch(Exception ex) { MessageBox.Show("Не удалось сохранить настройки вида:\n"+ex.Message); }
+  try { service.SaveView(); } catch(Exception ex) { ShowMessage("Не удалось сохранить настройки вида:\n"+ex.Message); }
  }
  void OpenGenreMenu() {
   var menu=new ContextMenu { MaxHeight=450, PlacementTarget=genreFilter, Placement=System.Windows.Controls.Primitives.PlacementMode.Bottom };
@@ -297,12 +291,12 @@ public partial class Tracker : Application {
   genreFilter.ContextMenu=menu; menu.IsOpen=true;
  }
  Border Row(Anime a, bool compact) {
-  var border=new Border { Tag="row", Background=new SolidColorBrush(Color.FromArgb(compact?(byte)70:(byte)255,255,249,225)), BorderBrush=new SolidColorBrush(Color.FromArgb(80,190,159,87)), BorderThickness=new Thickness(0,0,0,1), CornerRadius=new CornerRadius(3), Padding=new Thickness(compact?7:16), Margin=new Thickness(0,0,0,compact?8:12) };
+  var border=new Border { Tag="row", Background=ThemeBrush(Color.FromArgb(compact?(byte)70:(byte)255,255,249,225)), BorderBrush=ThemeBrush(Color.FromArgb(80,190,159,87)), BorderThickness=new Thickness(0,0,0,1), CornerRadius=new CornerRadius(3), Padding=new Thickness(compact?7:16), Margin=new Thickness(0,0,0,compact?8:12) };
   var dock=new DockPanel(); border.Child=dock;
   var buttons=new StackPanel { Orientation=Orientation.Horizontal, VerticalAlignment=VerticalAlignment.Center };
   var plus=Btn("+1",delegate { Increment(a); });
   plus.FontSize=18; plus.Foreground=Accent; plus.IsEnabled=!a.Completed; plus.ToolTip="Отметить следующую серию"; buttons.Children.Add(plus);
-  if (!compact) { Primary(plus);plus.Foreground=Ink;buttons.Children.Add(Quiet(Btn(a.Notes.Length>0?"Карточка •":"Карточка",delegate { Edit(a,full); }))); }
+  if (!compact) { Primary(plus);plus.Foreground=ThemeBrush("#241B0B");buttons.Children.Add(Quiet(Btn(a.Notes.Length>0?"Карточка •":"Карточка",delegate { Edit(a,full); }))); }
   DockPanel.SetDock(buttons,Dock.Right); dock.Children.Add(buttons);
   if(a.CatalogId>0) { var cover=new Image { Width=compact?32:64, Height=compact?46:90, Stretch=Stretch.Uniform, Margin=new Thickness(0,0,compact?7:16,0) }; DockPanel.SetDock(cover,Dock.Left); dock.Children.Add(cover); LoadCover(cover,a.CatalogId,a.CoverUrl,System.Threading.CancellationToken.None); }
   var labels=new StackPanel { Margin=new Thickness(0,0,10,0), Cursor=Cursors.Hand }; labels.MouseLeftButtonUp += delegate(object s, MouseButtonEventArgs e) { Edit(a,compact?null:full); e.Handled=true; };
@@ -310,7 +304,7 @@ public partial class Tracker : Application {
   if(!compact) { var names=String.Join(" · ",new[]{a.English,a.Japanese,a.Romaji}.Where(s=>!String.IsNullOrWhiteSpace(s) && s!=a.Title).Distinct()); if(names.Length>0) {var alternative=Text(names,12,Muted);alternative.Margin=new Thickness(0,4,0,0);labels.Children.Add(alternative);} }
   var progress=Text((MalImport.StatusLabel(a.Status)+" · ") + a.Watched + (a.Total>0?" / " + a.Total:" / ?") + " серий" + (a.AiringStatus=="ongoing"?" · вышло "+a.EpisodesAired:""),compact?12:13,compact?Muted:Ink);progress.Margin=new Thickness(0,compact?0:10,0,0);labels.Children.Add(progress);
   if(a.Rewatching) labels.Children.Add(Text("Пересмотр · серия "+a.RewatchEpisode,11,Muted));
-  if(a.Total>0) labels.Children.Add(new ProgressBar { Minimum=0, Maximum=a.Total, Value=a.Watched, Height=compact?3:4, Margin=new Thickness(0,8,0,compact?0:8), Foreground=Accent, Background=new SolidColorBrush(Color.FromRgb(232,213,157)), BorderThickness=new Thickness(0) });
+  if(a.Total>0) labels.Children.Add(new ProgressBar { Minimum=0, Maximum=a.Total, Value=a.Watched, Height=compact?3:4, Margin=new Thickness(0,8,0,compact?0:8), Foreground=Accent, Background=ThemeBrush(Color.FromRgb(232,213,157)), BorderThickness=new Thickness(0) });
   if(!compact) {var details=new WrapPanel();var score=Text(a.Score>0?"★ "+a.Score+" / 10":"☆ Без оценки",12,Ink);score.Margin=new Thickness(0,0,16,4);details.Children.Add(score);if(a.Genres.Length>0)details.Children.Add(Text(String.Join(" · ",LibraryView.Genres(a)),12,Muted));labels.Children.Add(details);}
   dock.Children.Add(labels); return border;
  }
@@ -353,7 +347,7 @@ public partial class Tracker : Application {
   var queryRow=new DockPanel { Margin=new Thickness(0,6,0,6) }; var find=new Button { Content="Найти", Margin=new Thickness(8,0,0,0) }; DockPanel.SetDock(find,Dock.Right); queryRow.Children.Add(find);
   var query=new TextBox { MaxLength=150, ToolTip="Название на русском, английском, японском или латиницей" }; queryRow.Children.Add(query); p.Children.Add(queryRow);
   var searchStatus=Text("Введите от двух символов — варианты появятся автоматически.",11,Muted); p.Children.Add(searchStatus);
-  var results=new ListBox { MaxHeight=190, Visibility=Visibility.Collapsed, Background=new SolidColorBrush(Color.FromRgb(255,248,223)), BorderThickness=new Thickness(0), Margin=new Thickness(0,8,0,0), HorizontalContentAlignment=HorizontalAlignment.Stretch };
+  var results=new ListBox { MaxHeight=190, Visibility=Visibility.Collapsed, Background=ThemeBrush(Color.FromRgb(255,248,223)), BorderThickness=new Thickness(0), Margin=new Thickness(0,8,0,0), HorizontalContentAlignment=HorizontalAlignment.Stretch };
   ScrollViewer.SetHorizontalScrollBarVisibility(results,ScrollBarVisibility.Disabled); p.Children.Add(results);
   var selectionPanel=new DockPanel { Margin=new Thickness(0,12,0,0), Visibility=selected==null?Visibility.Collapsed:Visibility.Visible };
   var selectedCover=new Image { Width=55, Height=78, Stretch=Stretch.Uniform, Margin=new Thickness(0,0,12,0) }; DockPanel.SetDock(selectedCover,Dock.Left); selectionPanel.Children.Add(selectedCover);
@@ -410,7 +404,7 @@ public partial class Tracker : Application {
   Action syncCompleted=delegate { int count; bool known=statusChoice.SelectedIndex==1 && Int32.TryParse(total.Text,out count) && count>0; watched.IsReadOnly=known; if(known) watched.Text=total.Text.Trim(); };
   statusChoice.SelectionChanged+=delegate { syncCompleted(); }; total.TextChanged+=delegate { syncCompleted(); }; syncCompleted();
   p.Children.Add(Text("Моя оценка",12,Muted)); var rating=new ComboBox { ItemsSource=Ratings.Labels, SelectedIndex=existing==null?0:existing.Score, Padding=new Thickness(6), Margin=new Thickness(0,5,0,14) }; p.Children.Add(rating);
-  var error=Text("",12,Brushes.Salmon); p.Children.Add(error);
+  var error=Text("",12,ThemeBrush("#FA8072")); p.Children.Add(error);
   var actions=new StackPanel { Orientation=Orientation.Horizontal, Margin=new Thickness(0,12,0,0) };
   var save=Btn("Сохранить",delegate {
    int w,t=0; string title=name.Text.Trim();
@@ -456,7 +450,7 @@ public partial class Tracker : Application {
    var widgetTest=new Library(); widgetTest.Items.Add(older); widgetTest.Items.Add(recent);
    if(LatestAnime(widgetTest)!=recent) throw new Exception("Widget must show latest user change regardless of status");
    older.Updated=recent.Updated.AddMinutes(1); if(LatestAnime(widgetTest)!=older) throw new Exception("Widget follows user edits");
-   ViewPreferences.Test(dir);SettingsBackupTest(dir);LibraryStorageTests.Run(dir);AutoStart.Test(dir);StartupDiagnostics.Test(dir);TrackerServiceTests.Run(dir).GetAwaiter().GetResult();
+   ViewPreferences.Test(dir);AppearanceTests.Run(dir);SettingsBackupTest(dir);LibraryStorageTests.Run(dir);AutoStart.Test(dir);StartupDiagnostics.Test(dir);TrackerServiceTests.Run(dir).GetAwaiter().GetResult();
    var completion=new Anime { Watched=3,Total=12 };
    completion.SetProgress(3,12,"completed"); if(completion.Watched!=12 || completion.Status!="completed") throw new Exception("Completed fills known total");
    completion.SetProgress(5,0,"completed"); if(completion.Watched!=5) throw new Exception("Unknown total preserves progress");

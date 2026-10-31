@@ -84,10 +84,12 @@ try{
     Assert ([IO.File]::ReadAllText((Join-Path $prepared 'RELEASE-NOTES.md')) -eq [IO.File]::ReadAllText($expectedNotes)) 'Prepared release lost version-specific notes'
     Reject {Test-ReleasePackages $packages $base $base 'stable' $other} 'Artifacts from another commit accepted'
     Write-Fixture $packages 'stale.zip';Reject {Get-ReleaseAssets $packages $base} 'Stale archive accepted';Remove-Item -LiteralPath (Join-Path $packages 'stale.zip')
-    $bad=Join-Path $scratch 'bad';New-Packages $bad
-    $zip=[IO.Compression.ZipFile]::Open((Join-Path $bad "AnimeTracker-$base-source.zip"),[IO.Compression.ZipArchiveMode]::Update)
-    try{Add-Entry $zip "AnimeTracker-$base-source/data/library.xml" ([byte[]]@(1))}finally{$zip.Dispose()}
-    Reject {Test-ReleasePackages $bad $base $base 'stable' $sha} 'Private library accepted'
+    foreach($private in @('data/library.xml','appearance-settings.xml')){
+        $bad=Join-Path $scratch ('bad-'+[Guid]::NewGuid().ToString('N'));New-Packages $bad
+        $zip=[IO.Compression.ZipFile]::Open((Join-Path $bad "AnimeTracker-$base-source.zip"),[IO.Compression.ZipArchiveMode]::Update)
+        try{Add-Entry $zip "AnimeTracker-$base-source/$private" ([byte[]]@(1))}finally{$zip.Dispose()}
+        Reject {Test-ReleasePackages $bad $base $base 'stable' $sha} "Private settings accepted: $private"
+    }
     $unsafe=Join-Path $scratch 'unsafe';New-Packages $unsafe
     $zip=[IO.Compression.ZipFile]::Open((Join-Path $unsafe "AnimeTracker-$base-source.zip"),[IO.Compression.ZipArchiveMode]::Update)
     try{Add-Entry $zip '../outside.txt' ([byte[]]@(1))}finally{$zip.Dispose()}
@@ -96,12 +98,13 @@ try{
     $zip=[IO.Compression.ZipFile]::Open((Join-Path $noexec "AnimeTracker-$base-macos-arm64.zip"),[IO.Compression.ZipArchiveMode]::Update)
     try{$zip.GetEntry('Anime Tracker.app/Contents/MacOS/AnimeTracker').ExternalAttributes=0x81a4 -shl 16}finally{$zip.Dispose()}
     Reject {Test-ReleasePackages $noexec $base $base 'stable' $sha} 'Non-executable Mac app accepted'
-    foreach($case in @('linux-mode','linux-arch','linux-private','linux-traversal')){
+    foreach($case in @('linux-mode','linux-arch','linux-private','linux-theme','linux-traversal')){
         $directory=Join-Path $scratch $case;New-Packages $directory
         switch($case){
             'linux-mode'{New-LinuxFixture $directory -NoExecute}
             'linux-arch'{New-LinuxFixture $directory -WrongArchitecture}
             'linux-private'{New-LinuxFixture $directory -Extra 'data/library.xml'}
+            'linux-theme'{New-LinuxFixture $directory -Extra 'appearance-settings.xml'}
             'linux-traversal'{New-LinuxFixture $directory -Extra '../outside'}
         }
         Reject {Test-ReleasePackages $directory $base $base 'stable' $sha} "Unsafe Linux package accepted: $case"

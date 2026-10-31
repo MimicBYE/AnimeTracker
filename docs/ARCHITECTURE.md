@@ -55,3 +55,11 @@ AT-22 добавляет в TrackerFiles раздельные data/config/cache 
 5. Новый исходник вне SDK auto-include добавить в `windows-sources.txt`; проверить Windows release/source rebuild и Core/desktop tests. Обновить документы при изменении форматов/требований.
 
 Результаты AT-20: [отчёт проверки](validation/2026-10-28-shared-core.md). Последующие платформы: [roadmap](PLATFORM-ROADMAP.md).
+
+## Оформление Light/Dark (AT-24)
+
+`Core/Appearance.cs` содержит `AppearanceOptions` и общую `PaperPalette`: прежние светлые оттенки и нейтральные серые тёмные. `TrackerService.SetAppearance` атомарно сохраняет `appearance-settings.xml` с `.bak`, затем публикует `AppearanceChanged`; библиотечный `Changed` не вызывается. Ошибка записи не меняет активный выбор. По умолчанию Light, повреждённая настройка читается из валидной копии либо используется Light. Перенос/backup включают файл; в XDG это ConfigRoot.
+
+`Desktop/DesktopTheme.cs` обновляет общие кисти, DynamicResource и RequestedThemeVariant, включая ресурсы состояний Fluent. `Windows/WindowsTheme.cs` обновляет общие кисти через binding (WPF не должен замораживать их в стилях/рисунках), DynamicResource, заголовки DWM и меню трея. Оба клиента держат выбор в черновике до «Применить»; системная тема ОС не меняется. Переключение не пересоздаёт библиотеку. Непрозрачный Explorer-виджет Windows сохранён. Нативные системные диалоги и меню macOS/Linux оформляет ОС.
+
+Регрессии: `tests/Shared/AppearanceTests.cs`, `tests/AnimeTracker.DesktopTests/ThemeTests.cs`, WPF `--theme-test`. Последний работает до обычного старта приложения, не использует mutex/личную data, не закрепляет виджет и не меняет автозапуск. Windows release проверяет его из бинарного ZIP и повторно из пересобранного source ZIP.

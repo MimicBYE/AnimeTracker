@@ -12,14 +12,14 @@ using System.Windows.Data;
 namespace AnimeTracker {
 public partial class Tracker {
  async void ImportMal() {
-  if(storageBlocked) { MessageBox.Show("Сначала восстановите повреждённую библиотеку. Импорт не выполнялся."); return; }
+  if(storageBlocked) { ShowMessage("Сначала восстановите повреждённую библиотеку. Импорт не выполнялся."); return; }
   var picker=new Microsoft.Win32.OpenFileDialog { Title="Экспорт Anime List из MyAnimeList", Filter="MyAnimeList (*.xml;*.gz)|*.xml;*.gz", CheckFileExists=true };
   if(picker.ShowDialog(full)!=true) return;
   List<Anime> incoming;
   try { incoming=await System.Threading.Tasks.Task.Run(()=>MalImport.Read(picker.FileName)); }
-  catch(Exception ex) { MessageBox.Show("Не удалось прочитать экспорт. Библиотека не изменена.\n"+ex.Message,"Импорт MyAnimeList"); return; }
+  catch(Exception ex) { ShowMessage("Не удалось прочитать экспорт. Библиотека не изменена.\n"+ex.Message,"Импорт MyAnimeList"); return; }
   List<ImportRow> rows;
-  try { rows=MalImport.Preview(library,incoming); } catch(Exception ex) { MessageBox.Show(ex.Message,"Импорт MyAnimeList"); return; }
+  try { rows=MalImport.Preview(library,incoming); } catch(Exception ex) { ShowMessage(ex.Message,"Импорт MyAnimeList"); return; }
   var dialog=new Window { Title="Импорт MyAnimeList — предварительный просмотр", Width=920, Height=620, MinWidth=640, MinHeight=420, Owner=full, WindowStartupLocation=WindowStartupLocation.CenterOwner };
   StyleWindow(dialog);
   var panel=new DockPanel { Margin=new Thickness(20) }; dialog.Content=panel;
@@ -37,10 +37,10 @@ public partial class Tracker {
     var result=service.CommitMal(picker.FileName,incoming,overwrite.IsChecked==true);
     string backup=result.Backup;
     undo=null; Refresh(); dialog.Close();
-    MessageBox.Show("Импорт завершён. Новых записей: "+result.Added+". Совпадений: "+result.Matched+".\n\nИсходный экспорт и резервная копия:\n"+backup,"Импорт MyAnimeList");
-   } catch(Exception ex) { MessageBox.Show("Импорт не завершён.\n"+ex.Message,"Импорт MyAnimeList"); }
+    ShowMessage("Импорт завершён. Новых записей: "+result.Added+". Совпадений: "+result.Matched+".\n\nИсходный экспорт и резервная копия:\n"+backup,"Импорт MyAnimeList");
+   } catch(Exception ex) { ShowMessage("Импорт не завершён.\n"+ex.Message,"Импорт MyAnimeList"); }
   }); actions.Children.Add(import); var cancel=Btn("Отмена",delegate { dialog.Close(); }); cancel.IsCancel=true; actions.Children.Add(cancel); DockPanel.SetDock(actions,Dock.Bottom); panel.Children.Add(actions);
-  var grid=new DataGrid { AutoGenerateColumns=false, IsReadOnly=true, CanUserAddRows=false, ItemsSource=rows, EnableRowVirtualization=true, Background=System.Windows.Media.Brushes.White, RowBackground=System.Windows.Media.Brushes.FloralWhite, Foreground=Ink, GridLinesVisibility=DataGridGridLinesVisibility.Horizontal };
+  var grid=new DataGrid { AutoGenerateColumns=false, IsReadOnly=true, CanUserAddRows=false, ItemsSource=rows, EnableRowVirtualization=true, HeadersVisibility=DataGridHeadersVisibility.Column, Background=ThemeBrush("#FFFFFF"), RowBackground=ThemeBrush("#FFFAF0"), Foreground=Ink, GridLinesVisibility=DataGridGridLinesVisibility.Horizontal };
   foreach(var column in new[]{new[]{"Аниме","Title"},new[]{"Статус XML","MalStatus"},new[]{"Серии XML","Progress"},new[]{"В библиотеке","Local"},new[]{"Примечание","Note"}}) grid.Columns.Add(new DataGridTextColumn { Header=column[0],Binding=new Binding(column[1]),Width=column[1]=="Title"?new DataGridLength(2,DataGridLengthUnitType.Star):new DataGridLength(1,DataGridLengthUnitType.Star) });
   panel.Children.Add(grid); dialog.ShowDialog();
  }
