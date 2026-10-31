@@ -33,12 +33,12 @@ public partial class Tracker {
   var widgetHelp=Text("Отключённый виджет остаётся выключенным после перезапуска. Вернуть его можно кнопкой «Показать виджет» или из трея.",12,Muted);widgetHelp.Margin=new Thickness(0,12,0,0);widgetPanel.Children.Add(widgetHelp);
   body.Children.Add(SettingsCard(widgetPanel));
   var startup=new CheckBox {Content="Запускать вместе с Windows",Margin=new Thickness(0,12,0,0)};
-  var appearance=new ComboBox {ItemsSource=new[]{"Светлая","Тёмная"},Margin=new Thickness(0,6,0,16)};AutomationProperties.SetName(appearance,"Тема приложения");
+  var appearance=new ComboBox {ItemsSource=AppearanceOptions.Labels,Margin=new Thickness(0,6,0,16)};AutomationProperties.SetName(appearance,"Тема приложения");
   var appPanel=new StackPanel();appPanel.Children.Add(Text("Приложение",20,Ink));appPanel.Children.Add(Text("Тема",12,Muted));appPanel.Children.Add(appearance);appPanel.Children.Add(startup);var startupHelp=Text("Запуск при входе в учётную запись Windows. Настройка применяется кнопкой «Применить».",12,Muted);startupHelp.Margin=new Thickness(0,8,0,0);appPanel.Children.Add(startupHelp);body.Children.Add(SettingsCard(appPanel));
   var message=Text("",12,Muted);var actions=new WrapPanel {Margin=new Thickness(0,0,0,8)};
   Anime[] pinnedItems=new Anime[0];
   Action reload=delegate {
-   appearance.SelectedIndex=service.Appearance.Dark?1:0;enabled.IsChecked=widgetOptions.Enabled;style.SelectedIndex=widgetOptions.Style;
+   appearance.SelectedIndex=service.Appearance.Index;enabled.IsChecked=widgetOptions.Enabled;style.SelectedIndex=widgetOptions.Style;
    pinnedItems=library.Items.OrderBy(a=>a.Title,StringComparer.CurrentCultureIgnoreCase).ToArray();
    pin.ItemsSource=new[]{"Автоматически: последнее изменённое"}.Concat(pinnedItems.Select(a=>a.Title)).ToArray();pin.SelectedIndex=Array.FindIndex(pinnedItems,a=>a.Id==widgetOptions.Pinned)+1;
    try {startup.IsChecked=AutoStart.Enabled;startup.IsEnabled=true;message.Text="";}catch(Exception ex){startup.IsEnabled=false;message.Text="Не удалось прочитать автозапуск: "+ex.Message;}
@@ -50,7 +50,7 @@ public partial class Tracker {
     if(startup.IsEnabled){wasStartup=AutoStart.Enabled;changedStartup=wasStartup!=(startup.IsChecked==true);if(changedStartup || startup.IsChecked==true)AutoStart.Set(startup.IsChecked==true);}
     bool changedWidget=selected!=widgetOptions.Pinned||Math.Max(0,style.SelectedIndex)!=widgetOptions.Style||(enabled.IsChecked==true)!=widgetOptions.Enabled;
     if(changedWidget&&!SaveWidgetOptions(selected,Math.Max(0,style.SelectedIndex),enabled.IsChecked==true)){if(changedStartup)AutoStart.Set(wasStartup);return;}
-    service.SetAppearance(appearance.SelectedIndex==1?"dark":"light");message.Text="Настройки сохранены";
+    service.SetAppearance(AppearanceOptions.Modes[Math.Max(0,appearance.SelectedIndex)]);message.Text="Настройки сохранены";
    } catch(Exception ex){message.Text="Не удалось сохранить настройки: "+ex.Message;}
   })));
   actions.Children.Add(Btn("Сбросить изменения",delegate {reload();message.Text="Показаны сохранённые настройки";}));

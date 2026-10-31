@@ -9,7 +9,7 @@ public partial class Tracker {
   <Style TargetType='Window'><Setter Property='FontFamily' Value='Segoe UI'/><Setter Property='Foreground' Value='{DynamicResource Paper_47361D}'/><Setter Property='Background' Value='{DynamicResource Paper_F8EECC}'/></Style>
   </ResourceDictionary>");
   using(var theme=System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("AnimeTracker.DropdownTheme")) Resources.MergedDictionaries.Add((ResourceDictionary)XamlReader.Load(theme));
-  ApplyAppearance();
+  ApplyAppearance(false);
  }
 }
 }

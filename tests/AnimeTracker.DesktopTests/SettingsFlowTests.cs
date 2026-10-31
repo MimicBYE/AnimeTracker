@@ -38,13 +38,13 @@ internal static class SettingsFlowTests
         try
         {
             var controls=dialog.GetLogicalDescendants().ToArray();var style=controls.OfType<ComboBox>().Single(c=>Avalonia.Automation.AutomationProperties.GetName(c)=="Оформление виджета");var enabled=controls.OfType<CheckBox>().Single(c=>c.Content as string=="Показывать виджет");var startup=controls.OfType<CheckBox>().Single(c=>c.Content as string=="Запускать при входе в систему");bool? initialStartup=startup.IsChecked;
-            var theme=controls.OfType<ComboBox>().Single(c=>Avalonia.Automation.AutomationProperties.GetName(c)=="Тема приложения");theme.SelectedIndex=1;
+            var theme=controls.OfType<ComboBox>().Single(c=>Avalonia.Automation.AutomationProperties.GetName(c)=="Тема приложения");Check(theme.SelectedIndex==0&&store.Appearance.Mode=="system","System is not the default choice");theme.SelectedIndex=2;
             style.SelectedIndex=2;enabled.IsChecked=false;startup.IsChecked=initialStartup!=true;
             var import=Button(dialog,"Импорт XML из MyAnimeList");
             void DraftIntact()
             {
                 Check(dialog.IsVisible&&!settingsTask.IsCompleted,"Import dismissed Settings");
-                Check(theme.SelectedIndex==1&&!store.Appearance.Dark&&style.SelectedIndex==2&&enabled.IsChecked==false&&startup.IsChecked==(initialStartup!=true),"Import lost the settings draft");
+                Check(theme.SelectedIndex==2&&!store.Appearance.Dark&&style.SelectedIndex==2&&enabled.IsChecked==false&&startup.IsChecked==(initialStartup!=true),"Import lost the settings draft");
                 Check(store.Widget.Style==0&&store.Widget.Enabled&&File.ReadAllText(widgetPath)==originalWidget,"Import applied widget settings implicitly");
                 var startupProperty=typeof(MainWindow).Assembly.GetType("AnimeTracker.Desktop.MacIntegration")!.GetProperty("AutoStartEnabled")!;
                 Check((bool)startupProperty.GetValue(null)! == (initialStartup==true),"Import changed OS autostart");

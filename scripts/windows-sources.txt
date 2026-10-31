@@ -37,3 +37,6 @@ src/AnimeTracker.Windows/ThemeResources.cs
 src/AnimeTracker.Windows/WindowsTheme.cs
 tests/Shared/AppearanceTests.cs
 src/AnimeTracker.Windows/ThemeTests.cs
+src/AnimeTracker.Core/AppearanceBinding.cs
+src/AnimeTracker.Windows/SystemAppearance.cs
+tests/Shared/SystemAppearanceTests.cs
