@@ -12,6 +12,7 @@ namespace AnimeTracker {
 public partial class Tracker {
  TabControl libraryTabs;
  TabItem settingsTab;
+ Func<bool> settingsDraft;
 
  void OpenSettings() {
   clickTimer.Stop();OpenLibrary();
@@ -36,12 +37,12 @@ public partial class Tracker {
   var appearance=new ComboBox {ItemsSource=AppearanceOptions.Labels,Margin=new Thickness(0,6,0,16)};AutomationProperties.SetName(appearance,"Тема приложения");
   var appPanel=new StackPanel();appPanel.Children.Add(Text("Приложение",20,Ink));appPanel.Children.Add(Text("Тема",12,Muted));appPanel.Children.Add(appearance);appPanel.Children.Add(startup);var startupHelp=Text("Запуск при входе в учётную запись Windows. Настройка применяется кнопкой «Применить».",12,Muted);startupHelp.Margin=new Thickness(0,8,0,0);appPanel.Children.Add(startupHelp);body.Children.Add(SettingsCard(appPanel));
   var message=Text("",12,Muted);var actions=new WrapPanel {Margin=new Thickness(0,0,0,8)};
-  Anime[] pinnedItems=new Anime[0];
+  Anime[] pinnedItems=new Anime[0];bool? startupBaseline=false;
   Action reload=delegate {
    appearance.SelectedIndex=service.Appearance.Index;enabled.IsChecked=widgetOptions.Enabled;style.SelectedIndex=widgetOptions.Style;
    pinnedItems=library.Items.OrderBy(a=>a.Title,StringComparer.CurrentCultureIgnoreCase).ToArray();
    pin.ItemsSource=new[]{"Автоматически: последнее изменённое"}.Concat(pinnedItems.Select(a=>a.Title)).ToArray();pin.SelectedIndex=Array.FindIndex(pinnedItems,a=>a.Id==widgetOptions.Pinned)+1;
-   try {startup.IsChecked=AutoStart.Enabled;startup.IsEnabled=true;message.Text="";}catch(Exception ex){startup.IsEnabled=false;message.Text="Не удалось прочитать автозапуск: "+ex.Message;}
+   try {startup.IsChecked=AutoStart.Enabled;startupBaseline=startup.IsChecked;startup.IsEnabled=true;message.Text="";}catch(Exception ex){startup.IsEnabled=false;message.Text="Не удалось прочитать автозапуск: "+ex.Message;}
   };
   actions.Children.Add(Primary(Btn("Применить",delegate {
    string selected=pin.SelectedIndex<=0?"":pinnedItems[pin.SelectedIndex-1].Id;
@@ -55,6 +56,8 @@ public partial class Tracker {
   })));
   actions.Children.Add(Btn("Сбросить изменения",delegate {reload();message.Text="Показаны сохранённые настройки";}));
   body.Children.Add(actions);body.Children.Add(message);
+  settingsDraft=()=>appearance.SelectedIndex!=service.Appearance.Index||style.SelectedIndex!=widgetOptions.Style||(enabled.IsChecked==true)!=widgetOptions.Enabled||(startup.IsEnabled&&startup.IsChecked!=startupBaseline)||(pin.SelectedIndex<=0?"":pinnedItems[pin.SelectedIndex-1].Id)!=widgetOptions.Pinned;
+  var updatesPanel=new StackPanel();updatesPanel.Children.Add(Text("Обновления приложения",20,Ink));updatesPanel.Children.Add(Text("Проверка, скачивание и установка без ручного копирования файлов",12,Muted));updatesPanel.Children.Add(Btn("Обновления…",delegate{OpenUpdates(settingsDraft);}));body.Children.Add(SettingsCard(updatesPanel));
   var dataPanel=new StackPanel();dataPanel.Children.Add(Text("Данные и резервные копии",20,Ink));
   var dataActions=new WrapPanel {Margin=new Thickness(0,14,0,0)};
   var import=Btn("Импорт XML из MyAnimeList",ImportMal);import.IsEnabled=!storageBlocked;dataActions.Children.Add(import);

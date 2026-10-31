@@ -73,6 +73,7 @@ Expand-Archive -LiteralPath $binaryZip -DestinationPath $verifyBinary
 $distributedExe = Join-Path (Join-Path $verifyBinary $binaryName) 'AnimeTracker.exe'
 Invoke-Check $distributedExe '--self-test' 'test-result.txt'
 Invoke-Check $distributedExe '--import-test' 'import-test.txt'
+Invoke-Check $distributedExe '--update-process-test' 'update-process-test.txt'
 Invoke-Check $distributedExe '--theme-test' 'theme-test.txt'
 
 # Rebuild only from the extracted source ZIP, with no files from the working checkout.
@@ -82,6 +83,7 @@ $extractedRoot = Join-Path $verifySource $sourceName
 $rebuilt = Join-Path $run 'rebuilt\AnimeTracker.exe'
 & (Join-Path $extractedRoot 'scripts/build-windows.ps1') -OutputPath $rebuilt -Platform x64
 Invoke-Check $rebuilt '--self-test' 'test-result.txt'
+Invoke-Check $rebuilt '--update-process-test' 'update-process-test.txt'
 Invoke-Check $rebuilt '--theme-test' 'theme-test.txt'
 
 $checksums = foreach ($file in @($binaryZip,$sourceZip)) { $hash = Get-FileHash -LiteralPath $file -Algorithm SHA256; $hash.Hash.ToLowerInvariant() + '  ' + [IO.Path]::GetFileName($file) }
