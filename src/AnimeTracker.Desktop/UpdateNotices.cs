@@ -16,8 +16,16 @@ public sealed partial class App
     internal void QueueUpdateNotice()=>Dispatcher.UIThread.Post(TryShowUpdateNotice,DispatcherPriority.ApplicationIdle);
     internal static Window BuildUpdateNotice(string version,Action update,Action later)
     {
-        var body=Paper.Stack(Paper.Text("Доступна версия "+version,20),Paper.Text("Установим обновление с резервной копией и перезапуском. Можно напомнить через 6 часов.",13,Paper.Muted),Paper.Actions(Paper.Primary(Paper.Button("Обновить",update)),Paper.Button("Напомнить позже",later)));
-        return new Window{Title="Новая версия Anime Tracker",Width=420,Height=230,CanResize=false,ShowActivated=false,ShowInTaskbar=false,Topmost=true,Background=Paper.Color("#F8EECC"),Content=new Border{Padding=new Thickness(20),Child=body}};
+        var body=Paper.Stack(Paper.Text("Доступна версия "+version,16),Paper.Text("Обновление с резервной копией",12,Paper.Muted),Paper.Actions(Paper.Primary(Paper.Button("Обновить",update)),Paper.Button("Напомнить позже",later)));body.Spacing=6;
+        var window=new Window{Title="Новая версия Anime Tracker",Width=360,Height=160,CanResize=false,ShowActivated=false,ShowInTaskbar=false,Topmost=true,Background=Paper.Color("#F8EECC"),Content=new Border{Padding=new Thickness(14),Child=body}};AttachNoticeTimeout(window);return window;
+    }
+    static void AttachNoticeTimeout(Window window)
+    {
+        var clock=new System.Diagnostics.Stopwatch();UpdateNoticeLifetime? lifetime=null;var timer=new DispatcherTimer();
+        void Schedule(){timer.Stop();if(lifetime==null)return;bool paused=window.IsPointerOver||(window.IsActive&&window.IsKeyboardFocusWithin);lifetime.SetPaused(paused);if(paused)return;var remaining=lifetime.Remaining;if(remaining<=TimeSpan.Zero){window.Close();return;}timer.Interval=remaining;timer.Start();}
+        window.Opened+=(_,_)=>{clock.Start();lifetime=new UpdateNoticeLifetime(()=>clock.Elapsed);Schedule();};
+        window.PropertyChanged+=(_,e)=>{if(e.Property==Avalonia.Input.InputElement.IsPointerOverProperty||e.Property==Avalonia.Input.InputElement.IsKeyboardFocusWithinProperty||e.Property==Window.IsActiveProperty)Schedule();};
+        timer.Tick+=(_,_)=>Schedule();window.Closing+=(_,_)=>{timer.Stop();clock.Stop();lifetime=null;};window.Closed+=(_,_)=>timer.Stop();
     }
     internal void TryShowUpdateNotice()
     {
@@ -29,7 +37,7 @@ public sealed partial class App
         var notice=BuildUpdateNotice(release.Version,()=>{if(updates.Busy)return;install=true;updateNotice!.Close();},()=>updateNotice!.Close());updateNotice=notice;notice.Icon=LibraryWindow.Icon;
         notice.Opened+=(_,_)=>{
             var screen=LibraryWindow.Screens.ScreenFromWindow(LibraryWindow)??notice.Screens.Primary;if(screen==null)return;
-            var area=screen.WorkingArea;notice.Width=Math.Min(420,(area.Width-24)/notice.DesktopScaling);notice.Height=Math.Min(230,(area.Height-24)/notice.DesktopScaling);
+            var area=screen.WorkingArea;notice.Width=Math.Min(360,(area.Width-24)/notice.DesktopScaling);notice.Height=Math.Min(160,(area.Height-24)/notice.DesktopScaling);
             notice.Position=new PixelPoint(Math.Max(area.X+12,area.Right-(int)(notice.Width*notice.DesktopScaling)-12),Math.Max(area.Y+12,area.Bottom-(int)(notice.Height*notice.DesktopScaling)-12));
         };
         notice.Closing+=async(_,e)=>{

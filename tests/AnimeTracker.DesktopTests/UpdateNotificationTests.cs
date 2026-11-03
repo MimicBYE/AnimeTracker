@@ -1,6 +1,8 @@
 using System.Reflection;
 using AnimeTracker;
 using AnimeTracker.Desktop;
+using Avalonia;
+using Avalonia.VisualTree;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
@@ -25,6 +27,7 @@ internal static class UpdateNotificationTests
         {
             store.ModalDepth=1;Poll(app);Check(Notice(app)==null&&updates.NoticeDue,"Notification interrupted a modal or consumed pending release");store.ModalDepth=0;Poll(app);
             var notice=Notice(app)!;Check(notice!=null&&window.IsEnabled&&!notice.ShowActivated&&!notice.ShowInTaskbar,"Notification is modal/activating or missing");Poll(app);Check(ReferenceEquals(Notice(app),notice),"Duplicate notification");
+            notice!.UpdateLayout();Check(notice.Width<=360&&notice.Height<=160,"Notification is not compact");var content=(Control)notice.Content!;foreach(var button in notice.GetLogicalDescendants().OfType<Button>()){var point=button.TranslatePoint(default,content);Check(point.HasValue&&point.Value.X>=0&&point.Value.Y>=0&&point.Value.X+button.Bounds.Width<=content.Bounds.Width+1&&point.Value.Y+button.Bounds.Height<=content.Bounds.Height+1,"Compact notification button clipped");}
             Click(notice!,"Напомнить позже");Dispatcher.UIThread.RunJobs();Check(Notice(app)==null&&!updates.NoticeDue,"Later did not dismiss/snooze");
             Check(UpdateOptions.Load(store.Files.PathFor("update-settings.xml"),false).RemindAfter==fixture.UtcNow.AddHours(6),"Later was not persisted");
             fixture.UtcNow=fixture.UtcNow.AddHours(6);Poll(app);notice=Notice(app)!;Check(notice!=null,"Expired reminder was not shown");notice!.Close();Dispatcher.UIThread.RunJobs();Check(Notice(app)==null&&!updates.NoticeDue,"Window close did not mean Later");
@@ -32,6 +35,7 @@ internal static class UpdateNotificationTests
             Click(notice!,"Обновить");PumpUntil(()=>window.OwnedWindows.Any());var progress=window.OwnedWindows.Single();PumpUntil(()=>progress.OwnedWindows.Any());var confirmation=progress.OwnedWindows.Single();
             Check(confirmation.Title=="Установить 1.1.2?"&&store.ModalDepth==1,"Update did not go straight to confirmation/progress");Click(confirmation,"Отмена");Dispatcher.UIThread.RunJobs();
             Check(fixture.Downloads==0&&File.ReadAllBytes(store.LibraryPath).SequenceEqual(original),"Cancel downloaded software or changed library");Click(progress,"Закрыть");PumpUntil(()=>store.ModalDepth==0);
+            fixture.Version="1.1.3";fixture.Check().GetAwaiter().GetResult();Poll(app);var watch=System.Diagnostics.Stopwatch.StartNew();PumpUntil(()=>Notice(app)==null,8);Check(watch.Elapsed>=TimeSpan.FromSeconds(4.5)&&updates.Options.RemindVersion=="1.1.3","Five second timeout did not persist Later");
             return new{checks="nonmodal/no activation; no duplicates; modal deferral; Later persisted; X snoozes; new version bypasses old snooze; Update opens install confirmation without Settings; cancellation does not download/install/write library"};
         }
         finally
