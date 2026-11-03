@@ -55,6 +55,7 @@ public partial class Tracker : Application {
   window.SourceInitialized+=delegate {
    ApplyWindowTheme(window);
   };
+  window.Loaded+=delegate{if(appUpdates!=null)QueueUpdateNotice();};
  }
  [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
  [STAThread] public static void Main(string[] args) {
@@ -454,7 +455,7 @@ public partial class Tracker : Application {
    var widgetTest=new Library(); widgetTest.Items.Add(older); widgetTest.Items.Add(recent);
    if(LatestAnime(widgetTest)!=recent) throw new Exception("Widget must show latest user change regardless of status");
    older.Updated=recent.Updated.AddMinutes(1); if(LatestAnime(widgetTest)!=older) throw new Exception("Widget follows user edits");
-   UpdateTests.Run(dir).GetAwaiter().GetResult();ViewPreferences.Test(dir);AppearanceTests.Run(dir);SystemAppearanceTests.Run(dir);SettingsBackupTest(dir);LibraryStorageTests.Run(dir);AutoStart.Test(dir);StartupDiagnostics.Test(dir);TrackerServiceTests.Run(dir).GetAwaiter().GetResult();
+   UpdateTests.Run(dir).GetAwaiter().GetResult();UpdateNoticeTests.Run(dir).GetAwaiter().GetResult();ViewPreferences.Test(dir);AppearanceTests.Run(dir);SystemAppearanceTests.Run(dir);SettingsBackupTest(dir);LibraryStorageTests.Run(dir);AutoStart.Test(dir);StartupDiagnostics.Test(dir);TrackerServiceTests.Run(dir).GetAwaiter().GetResult();
    var completion=new Anime { Watched=3,Total=12 };
    completion.SetProgress(3,12,"completed"); if(completion.Watched!=12 || completion.Status!="completed") throw new Exception("Completed fills known total");
    completion.SetProgress(5,0,"completed"); if(completion.Watched!=5) throw new Exception("Unknown total preserves progress");

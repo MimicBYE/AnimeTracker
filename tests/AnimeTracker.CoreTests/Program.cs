@@ -12,6 +12,7 @@ try
     AppearanceTests.Run(root);SystemAppearanceTests.Run(root);
     Console.WriteLine("PASS: system default, OS signals/manual override/disposal/queued races; light/dark persistence, backup/defaults, failed writes, notifications, XDG routing, migration/backup, contrast, personal data unchanged");
     await UpdateTests.Run(root);
+    await UpdateNoticeTests.Run(root);
     Console.WriteLine("PASS: updater versions/channels, fake HTTP/SHA/cancellation, archive validation, three-platform install/rollback and personal data preservation");
     UpdateProcessTests.Run(Environment.ProcessPath!,OperatingSystem.IsMacOS()?"macos-arm64":OperatingSystem.IsLinux()?"linux-x64":"windows-x64",false);
     Console.WriteLine("PASS: isolated real updater parent/helper/child, readiness, failure/timeout rollback; no windows or OS registration changes");

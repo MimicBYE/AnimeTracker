@@ -10,8 +10,14 @@ using System.Diagnostics;
 namespace AnimeTracker {
 public sealed class UpdateOptions {
  public bool Automatic=true,Development;
- public static UpdateOptions Load(string path,bool development){foreach(var file in new[]{path,path+".bak"})try{if(!File.Exists(file))continue;using(var reader=XmlReader.Create(file,new XmlReaderSettings{DtdProcessing=DtdProcessing.Prohibit,XmlResolver=null,MaxCharactersInDocument=4096})){var x=XElement.Load(reader);bool a,d;if(x.Name=="updates"&&Boolean.TryParse((string)x.Attribute("automatic"),out a)&&Boolean.TryParse((string)x.Attribute("development"),out d))return new UpdateOptions{Automatic=a,Development=d};}}catch(IOException){}catch(UnauthorizedAccessException){}catch(XmlException){}return new UpdateOptions{Development=development};}
- public void Save(string path){Directory.CreateDirectory(Path.GetDirectoryName(path));var temp=path+".tmp";try{new XElement("updates",new XAttribute("automatic",Automatic),new XAttribute("development",Development)).Save(temp);if(File.Exists(path))File.Replace(temp,path,path+".bak");else File.Move(temp,path);}finally{if(File.Exists(temp))File.Delete(temp);}}
+ public string RemindVersion="";public DateTime RemindAfter=DateTime.MinValue;
+ public static UpdateOptions Load(string path,bool development){foreach(var file in new[]{path,path+".bak"})try{if(!File.Exists(file))continue;using(var reader=XmlReader.Create(file,new XmlReaderSettings{DtdProcessing=DtdProcessing.Prohibit,XmlResolver=null,MaxCharactersInDocument=4096})){
+  var x=XElement.Load(reader);bool a,d;if(x.Name!="updates"||!Boolean.TryParse((string)x.Attribute("automatic"),out a)||!Boolean.TryParse((string)x.Attribute("development"),out d))continue;
+  var result=new UpdateOptions{Automatic=a,Development=d};DateTime until;var version=(string)x.Attribute("remindVersion");
+  if(!String.IsNullOrEmpty(version)&&DateTime.TryParseExact((string)x.Attribute("remindAfter"),"o",System.Globalization.CultureInfo.InvariantCulture,System.Globalization.DateTimeStyles.RoundtripKind,out until)&&until.Kind==DateTimeKind.Utc)try{UpdateVersion.Parse(version);result.RemindVersion=version;result.RemindAfter=until;}catch(InvalidDataException){}
+  return result;
+ }}catch(IOException){}catch(UnauthorizedAccessException){}catch(XmlException){}return new UpdateOptions{Development=development};}
+ public void Save(string path){Directory.CreateDirectory(Path.GetDirectoryName(path));var temp=path+".tmp";try{var x=new XElement("updates",new XAttribute("automatic",Automatic),new XAttribute("development",Development));if(!String.IsNullOrEmpty(RemindVersion)){x.Add(new XAttribute("remindVersion",RemindVersion),new XAttribute("remindAfter",RemindAfter.ToUniversalTime().ToString("o")));}x.Save(temp);if(File.Exists(path))File.Replace(temp,path,path+".bak");else File.Move(temp,path);}finally{if(File.Exists(temp))File.Delete(temp);}}
 }
 public sealed class AppUpdates:IDisposable {
  public readonly UpdateBuild Build;public readonly string Platform,Target,StateRoot;
@@ -24,6 +30,14 @@ public sealed class AppUpdates:IDisposable {
  public double Progress {get;private set;}
  public event Action Changed;
  DateTime checkedAt=DateTime.MinValue;CancellationTokenSource operation;
+ string noticeVersion="";
+ public bool NoticeDue {get{return Options.Automatic&&!Busy&&Available!=null&&noticeVersion!=Available.Version&&(Options.RemindVersion!=Available.Version||now()>=Options.RemindAfter);}}
+ public UpdateRelease BeginNotice(){if(!NoticeDue)return null;noticeVersion=Available.Version;return Available;}
+ public void ReleaseNotice(string version){if(noticeVersion==version)noticeVersion="";}
+ public void RemindLater(string version){
+  UpdateVersion.Parse(version);var next=new UpdateOptions{Automatic=Options.Automatic,Development=Options.Development,RemindVersion=version,RemindAfter=now().AddHours(6)};
+  next.Save(optionsPath);Options=next;ReleaseNotice(version);Notify();
+ }
  string optionsPath {get{return data.PathFor("update-settings.xml");}}
  public AppUpdates(TrackerFiles data,string executable,string platform,string stateRoot,string fallback):this(data,executable,platform,stateRoot,fallback,new UpdateClient(),()=>DateTime.UtcNow){}
  public AppUpdates(TrackerFiles data,string executable,string platform,string stateRoot,string fallback,UpdateClient client,Func<DateTime> now){
@@ -36,7 +50,7 @@ public sealed class AppUpdates:IDisposable {
  }
  public void ReloadResult(){LastResult="";try{var latest=Directory.Exists(StateRoot)?Directory.GetDirectories(StateRoot,"update-*").Where(p=>File.Exists(Path.Combine(p,"result.txt"))).OrderByDescending(p=>File.GetLastWriteTimeUtc(Path.Combine(p,"result.txt"))).FirstOrDefault():null;if(latest!=null&&new FileInfo(Path.Combine(latest,"result.txt")).Length<=65536)LastResult=File.ReadAllText(Path.Combine(latest,"result.txt"));}catch(IOException){}catch(UnauthorizedAccessException){}}
  void Notify(){if(Changed!=null)Changed();}
- public void SetOptions(bool automatic,bool development){if(Busy)throw new InvalidOperationException("Дождитесь завершения операции обновления.");var next=new UpdateOptions{Automatic=automatic,Development=development};next.Save(optionsPath);bool channelChanged=Options.Development!=development;Options=next;if(channelChanged){Available=null;checkedAt=DateTime.MinValue;}Status=Available==null?"Настройки обновлений сохранены":"Доступна версия "+Available.Version;Notify();}
+ public void SetOptions(bool automatic,bool development){if(Busy)throw new InvalidOperationException("Дождитесь завершения операции обновления.");var next=new UpdateOptions{Automatic=automatic,Development=development,RemindVersion=Options.RemindVersion,RemindAfter=Options.RemindAfter};next.Save(optionsPath);bool channelChanged=Options.Development!=development;Options=next;if(channelChanged){Available=null;checkedAt=DateTime.MinValue;}Status=Available==null?"Настройки обновлений сохранены":"Доступна версия "+Available.Version;Notify();}
  public async Task Check(bool force,CancellationToken token){
   if(Busy||(!force&&(!Options.Automatic||now()-checkedAt<TimeSpan.FromHours(6))))return;
   Busy=true;Status="Проверяем обновления…";Notify();operation=CancellationTokenSource.CreateLinkedTokenSource(token);

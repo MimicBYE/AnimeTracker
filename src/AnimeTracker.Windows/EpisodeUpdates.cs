@@ -13,10 +13,10 @@ public partial class Tracker {
  bool updatingEpisodes;
  string episodeUpdateError="";
  event Action ScheduleChanged;
- bool CanUpdateEpisodes() { return !quitting && !storageBlocked && !Windows.Cast<Window>().Any(w=>w!=widget && w!=full); }
+ bool CanUpdateEpisodes() { return !quitting && !storageBlocked && !Windows.Cast<Window>().Any(w=>w!=widget && w!=full&&w!=updateNotice); }
  void StartEpisodeUpdates() {
   episodeTimer=new DispatcherTimer { Interval=TimeSpan.FromSeconds(10) };
-  episodeTimer.Tick+=async delegate { episodeTimer.Interval=TimeSpan.FromMinutes(15); await RefreshEpisodes();if(appUpdates!=null)await appUpdates.Check(false,episodeLifetime.Token); };
+  episodeTimer.Tick+=async delegate { episodeTimer.Interval=TimeSpan.FromMinutes(15); await RefreshEpisodes();if(appUpdates!=null)await appUpdates.Check(false,episodeLifetime.Token);TryShowUpdateNotice(); };
   episodeTimer.Start();
  }
  async Task RefreshEpisodes(bool force=false) {
