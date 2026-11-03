@@ -184,7 +184,7 @@ Windows и Avalonia используют один сервис операций 
 
 Порт macOS собирается SDK .NET 10 из `global.json` и PowerShell 7: `sh scripts/build-macos.sh` на Mac или `./scripts/build-macos.ps1` в PowerShell. Подробности — [инструкция macOS](docs/MACOS.md). Общие проверки: `dotnet run --project tests/AnimeTracker.CoreTests`. Проверки релизной инфраструктуры: `./tests/Release.Tests.ps1`.
 
-Подготовка чистой папки для GitHub: `./scripts/prepare-github.ps1`. Подробности — [подготовка GitHub-релиза](docs/GITHUB-RELEASE.md).
+Подготовка релиза: проверенные изменения принимаются в `dev`, затем открывается PR `dev → main`; CI собирает четыре архива и общие SHA-256. Для локального объединения готовых пакетов используется `scripts/prepare-release.ps1`. [Порядок выпуска](docs/GITHUB-RELEASE.md).
 
 Для ручной проверки Windows:
 
