@@ -21,6 +21,8 @@ public partial class Tracker {
    full=host;appUpdates=fixture.Updates;appUpdates.Changed+=QueueUpdateNotice;settingsDraft=()=>false;fixture.Check().GetAwaiter().GetResult();
    var blocker=new Window{Owner=host,Title="Карточка",Opacity=0,ShowInTaskbar=false,ShowActivated=false};blocker.Show();TryShowUpdateNotice();ThemeCheck(updateNotice==null&&appUpdates.NoticeDue,"notice interrupted card");blocker.Close();Dispatcher.Invoke(new Action(delegate{}),DispatcherPriority.ApplicationIdle);
    ThemeCheck(updateNotice!=null&&!updateNotice.ShowActivated&&!updateNotice.ShowInTaskbar&&host.IsEnabled,"nonmodal update notice");var first=updateNotice;TryShowUpdateNotice();ThemeCheck(updateNotice==first,"duplicate update notice");
+   first.UpdateLayout();ThemeCheck(first.ActualWidth<=360&&first.ActualHeight<=160,"notice is not compact");
+   var noticeContent=(FrameworkElement)first.Content;foreach(var button in ThemeChildren(first).OfType<Button>()){var point=button.TranslatePoint(new Point(),noticeContent);ThemeCheck(point.X>=0&&point.Y>=0&&point.X+button.ActualWidth<=noticeContent.ActualWidth+1&&point.Y+button.ActualHeight<=noticeContent.ActualHeight+1,"compact notice button clipped");}
    foreach(bool dark in new[]{false,true}){service.SetAppearance(dark?"dark":"light");ThemeCheck(ThemeColor(first.Background)==ThemeBrush("#F8EECC").Color,"notice theme");}
    ThemeChildren(first).OfType<Button>().Single(b=>b.Content as string=="Напомнить позже").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Dispatcher.Invoke(new Action(delegate{}),DispatcherPriority.ApplicationIdle);ThemeCheck(updateNotice==null&&!appUpdates.NoticeDue,"notice Later");
    ThemeCheck(UpdateOptions.Load(service.Files.PathFor("notice-ui/update-settings.xml"),false).RemindAfter==fixture.UtcNow.AddHours(6),"notice Later persistence");
@@ -36,6 +38,9 @@ public partial class Tracker {
    };
    poll.Start();ThemeChildren(updateNotice).OfType<Button>().Single(b=>b.Content as string=="Обновить").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Dispatcher.Invoke(new Action(delegate{}),DispatcherPriority.ApplicationIdle);poll.Stop();
    if(failure!=null)throw failure;ThemeCheck(confirmed&&fixture.Downloads==0,"Update did not go straight to cancelable confirmation");
+   fixture.Version="1.1.3";fixture.Check().GetAwaiter().GetResult();Dispatcher.Invoke(new Action(delegate{}),DispatcherPriority.ApplicationIdle);var automatic=updateNotice;ThemeCheck(automatic!=null,"missing timeout notice");
+   var elapsed=System.Diagnostics.Stopwatch.StartNew();var frame=new DispatcherFrame();bool expired=false;automatic.Closed+=delegate{expired=true;frame.Continue=false;};var deadline=new DispatcherTimer{Interval=TimeSpan.FromSeconds(8)};deadline.Tick+=delegate{deadline.Stop();frame.Continue=false;};deadline.Start();Dispatcher.PushFrame(frame);deadline.Stop();
+   ThemeCheck(expired&&elapsed.Elapsed>=TimeSpan.FromSeconds(4.5)&&updateNotice==null&&appUpdates.Options.RemindVersion=="1.1.3","five second timeout did not persist Later");
    appUpdates.Changed-=QueueUpdateNotice;appUpdates=null;
   }
  }
@@ -86,7 +91,7 @@ public partial class Tracker {
    ThemeCheck(File.ReadAllBytes(app.service.LibraryPath).SequenceEqual(original),"personal library changed");
    var notice=app.MessageWindow(host,"Сообщение в выбранной теме","Anime Tracker");notice.Opacity=0;notice.ShowInTaskbar=false;notice.Show();notice.UpdateLayout();ThemeCheck(ThemeColor(notice.Background)==ThemeBrush("#F8EECC").Color,"application message");notice.Close();
    app.UpdateNoticeUiTest(root,host);ThemeCheck(File.ReadAllBytes(app.service.LibraryPath).SequenceEqual(original),"update notice changed library");
-   File.WriteAllText(report,"PASS: WPF themes and settings; update notification nonmodal/no activation, live light/dark, card deferral, duplicate suppression, persisted Later/X/expiry/new version, direct update confirmation/cancel without download; personal XML unchanged. Synthetic data; no Explorer attachment, tray, autostart mutation or native OS-scale claim.");
+   File.WriteAllText(report,"PASS: WPF themes/settings; compact notification buttons in bounds, real five second timeout persists Later, nonmodal/no activation, live light/dark, card deferral, duplicate suppression, persisted Later/X/expiry/new version, direct update confirmation/cancel without download; personal XML unchanged. Synthetic data; no Explorer attachment, tray, autostart mutation or native OS-scale claim.");
   }catch(Exception e){File.WriteAllText(report,"FAIL "+e);Environment.ExitCode=1;}
   finally{if(app!=null){app.quitting=true;if(host!=null)host.Close();if(app.widget!=null)app.widget.Close();app.Shutdown();}if(Directory.Exists(root))Directory.Delete(root,true);}
  }

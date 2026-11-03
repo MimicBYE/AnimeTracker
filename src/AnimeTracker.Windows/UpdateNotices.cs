@@ -11,10 +11,21 @@ public partial class Tracker {
  bool dismissUpdateNotice;
  bool updateNoticeClosing;
  Window BuildUpdateNotice(string version,Action update,Action later){
-  var area=SystemParameters.WorkArea;var window=new Window{Title="Новая версия Anime Tracker",Width=Math.Min(420,area.Width-24),Height=Math.Min(230,area.Height-24),ResizeMode=ResizeMode.NoResize,ShowActivated=false,ShowInTaskbar=false,Topmost=true,WindowStartupLocation=WindowStartupLocation.Manual};
+  var area=SystemParameters.WorkArea;var window=new Window{Title="Новая версия Anime Tracker",Width=Math.Min(360,area.Width-24),Height=Math.Min(160,area.Height-24),ResizeMode=ResizeMode.NoResize,ShowActivated=false,ShowInTaskbar=false,Topmost=true,WindowStartupLocation=WindowStartupLocation.Manual};
   StyleWindow(window);window.Left=Math.Max(area.Left+12,area.Right-window.Width-12);window.Top=Math.Max(area.Top+12,area.Bottom-window.Height-12);
-  var body=new DockPanel{Margin=new Thickness(20)};var actions=new WrapPanel{Margin=new Thickness(0,16,0,0)};actions.Children.Add(Primary(Btn("Обновить",update)));actions.Children.Add(Btn("Напомнить позже",later));DockPanel.SetDock(actions,Dock.Bottom);body.Children.Add(actions);
-  var text=new StackPanel();text.Children.Add(Text("Доступна версия "+version,20,Ink));text.Children.Add(Text("Установим обновление с резервной копией и перезапуском. Можно напомнить через 6 часов.",13,Muted));body.Children.Add(text);window.Content=body;return window;
+  var body=new DockPanel{Margin=new Thickness(14)};var actions=new WrapPanel{Margin=new Thickness(0,10,0,0)};actions.Children.Add(Primary(Btn("Обновить",update)));actions.Children.Add(Btn("Напомнить позже",later));DockPanel.SetDock(actions,Dock.Bottom);body.Children.Add(actions);
+  var text=new StackPanel();text.Children.Add(Text("Доступна версия "+version,16,Ink));var detail=Text("Обновление с резервной копией",12,Muted);detail.Margin=new Thickness(0,4,0,0);text.Children.Add(detail);body.Children.Add(text);window.Content=body;AttachNoticeTimeout(window);return window;
+ }
+ void AttachNoticeTimeout(Window window){
+  var clock=new System.Diagnostics.Stopwatch();UpdateNoticeLifetime lifetime=null;var timer=new DispatcherTimer();
+  Action schedule=delegate{
+   timer.Stop();if(lifetime==null)return;bool paused=window.IsMouseOver||(window.IsActive&&window.IsKeyboardFocusWithin);lifetime.SetPaused(paused);if(paused)return;
+   var remaining=lifetime.Remaining;if(remaining<=TimeSpan.Zero){window.Close();return;}timer.Interval=remaining;timer.Start();
+  };
+  window.Loaded+=delegate{clock.Start();lifetime=new UpdateNoticeLifetime(()=>clock.Elapsed);schedule();};
+  window.MouseEnter+=delegate{schedule();};window.MouseLeave+=delegate{schedule();};window.IsKeyboardFocusWithinChanged+=delegate{schedule();};timer.Tick+=delegate{schedule();};
+  window.Activated+=delegate{schedule();};window.Deactivated+=delegate{schedule();};
+  window.Closing+=delegate{timer.Stop();clock.Stop();lifetime=null;};window.Closed+=delegate{timer.Stop();};
  }
  void QueueUpdateNotice(){Dispatcher.BeginInvoke(new Action(TryShowUpdateNotice),DispatcherPriority.ApplicationIdle);}
  void UpdateNoticeBlockClosed(object sender,EventArgs e){((Window)sender).Closed-=UpdateNoticeBlockClosed;QueueUpdateNotice();}

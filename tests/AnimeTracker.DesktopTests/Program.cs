@@ -12,7 +12,7 @@ using Avalonia.VisualTree;
 internal static class Program {
  static T Field<T>(MainWindow window,string name)=>(T)typeof(MainWindow).GetField(name,BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(window)!;
  internal static void Check(bool ok,string message){if(!ok)throw new Exception(message);}
- internal static void PumpUntil(Func<bool> done){using var stop=new CancellationTokenSource(TimeSpan.FromSeconds(5));var poll=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(10)};poll.Tick+=(_,_)=>{if(done())stop.Cancel();};poll.Start();try{Dispatcher.UIThread.MainLoop(stop.Token);}finally{poll.Stop();}Check(done(),"UI timeout");}
+ internal static void PumpUntil(Func<bool> done,int timeoutSeconds=5){using var stop=new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));var poll=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(10)};poll.Tick+=(_,_)=>{if(done())stop.Cancel();};poll.Start();try{Dispatcher.UIThread.MainLoop(stop.Token);}finally{poll.Stop();}Check(done(),"UI timeout");}
  [STAThread] static int Main(string[] args) {
   string root=Path.Combine(Path.GetTempPath(),"anime-tracker-ui-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
   try {

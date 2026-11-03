@@ -1,0 +1,2 @@
+6f9e5f55ab51badda0406da5b855d148fc247742cdb58928869ad4c416f00e44  notification-dark.png
+d563f85230bb23298a9bd94ca4490cd578e6b1ad3dba161abfe1e5b6d4d4ac72  notification-light.png
