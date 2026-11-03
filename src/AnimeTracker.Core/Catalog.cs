@@ -86,7 +86,6 @@ ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
    using(var response=await Client.PostAsync(Origin+"/api/graphql",new StringContent(body,Encoding.UTF8,"application/json"),token)) { response.EnsureSuccessStatusCode(); return Parse(await response.Content.ReadAsStringAsync()); }
   } finally { SearchGate.Release(); }
  }
- public static string CoverPath(int id) { return Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"data","covers",id+".png"); }
  public static Dictionary<int,List<CatalogEntry>> ParseSequels(string json) {return ParseRelations(json,"sequel");}
  public static Dictionary<int,List<CatalogEntry>> ParseRelations(string json,string direction) {
   var serializer=new JsonCodec();

@@ -12,7 +12,7 @@ $OutputPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromP
 New-Item -ItemType Directory -Path ([IO.Path]::GetDirectoryName($OutputPath)) -Force | Out-Null
 $sourceNames = @(Get-Content -LiteralPath (Join-Path $PSScriptRoot 'windows-sources.txt') | Where-Object { $_.Trim().Length -gt 0 })
 $sourceFiles = foreach ($name in $sourceNames) {
-    if ($name -notmatch '^src/(AnimeTracker.Windows|AnimeTracker.Core)/[A-Za-z0-9]+\.cs$') { throw "Invalid source filename: $name" }
+    if ($name -notmatch '^(src/(AnimeTracker.Windows|AnimeTracker.Core)/[A-Za-z0-9]+\.cs|tests/Shared/[A-Za-z0-9]+\.cs)$') { throw "Invalid source filename: $name" }
     $path = Join-Path $root $name
     if (!(Test-Path -LiteralPath $path)) { throw "Missing source: $name" }
     $path

@@ -1,4 +1,5 @@
 ﻿using AnimeTracker;
+int probeCode;if(UpdateProcessTests.Handle(args,out probeCode))return probeCode;
 var root = Path.Combine(Path.GetTempPath(), "anime-tracker-core-" + Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(root);
 try
@@ -8,8 +9,17 @@ try
     var anime = new Anime { Title = "Русский 日本語 & notes", Notes = "Моя заметка", Status = "planned", MalId = 21, Watched = 4, Total = 12, Score = 8 };
     var library = new Library(); library.Items.Add(anime); var path = Path.Combine(root, "library.xml"); library.Save(path);
     var copy = Library.Load(path).Items.Single(); if (copy.Notes != anime.Notes || copy.Id != anime.Id || copy.MalId != 21 || copy.Score != 8 || copy.Watched != 4) throw new Exception("Cross-platform XML roundtrip");
+    AppearanceTests.Run(root);SystemAppearanceTests.Run(root);
+    Console.WriteLine("PASS: system default, OS signals/manual override/disposal/queued races; light/dark persistence, backup/defaults, failed writes, notifications, XDG routing, migration/backup, contrast, personal data unchanged");
+    await UpdateTests.Run(root);
+    Console.WriteLine("PASS: updater versions/channels, fake HTTP/SHA/cancellation, archive validation, three-platform install/rollback and personal data preservation");
+    UpdateProcessTests.Run(Environment.ProcessPath!,OperatingSystem.IsMacOS()?"macos-arm64":OperatingSystem.IsLinux()?"linux-x64":"windows-x64",false);
+    Console.WriteLine("PASS: isolated real updater parent/helper/child, readiness, failure/timeout rollback; no windows or OS registration changes");
     PortTests.Run(root);
+    await LinuxPlatformTests.Run(root);
     LibraryStorageTests.Run(root);
+    await TrackerServiceTests.Run(root);
+    Console.WriteLine("PASS: shared application commands, persisted notifications, failed writes, current-state MAL merge, catalog batching/cancellation/overlap/stale responses and refresh retry");
     Console.WriteLine("PASS: failed writes preserve live/disk state, undo retry, strict/legacy XML, validated backup recovery and read-only failures");
     await CoverTests.Run();
     Console.WriteLine("PASS: shared Windows/macOS domain, XML, MAL/GZIP, queue/hiding, arcs, recommendations, ratings, notes, calendar, metadata preservation");

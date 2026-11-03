@@ -12,6 +12,7 @@ namespace AnimeTracker {
 public partial class Tracker {
  TabControl libraryTabs;
  TabItem settingsTab;
+ Func<bool> settingsDraft;
 
  void OpenSettings() {
   clickTimer.Stop();OpenLibrary();
@@ -33,40 +34,46 @@ public partial class Tracker {
   var widgetHelp=Text("Отключённый виджет остаётся выключенным после перезапуска. Вернуть его можно кнопкой «Показать виджет» или из трея.",12,Muted);widgetHelp.Margin=new Thickness(0,12,0,0);widgetPanel.Children.Add(widgetHelp);
   body.Children.Add(SettingsCard(widgetPanel));
   var startup=new CheckBox {Content="Запускать вместе с Windows",Margin=new Thickness(0,12,0,0)};
-  var appPanel=new StackPanel();appPanel.Children.Add(Text("Приложение",20,Ink));appPanel.Children.Add(startup);body.Children.Add(SettingsCard(appPanel));
+  var appearance=new ComboBox {ItemsSource=AppearanceOptions.Labels,Margin=new Thickness(0,6,0,16)};AutomationProperties.SetName(appearance,"Тема приложения");
+  var appPanel=new StackPanel();appPanel.Children.Add(Text("Приложение",20,Ink));appPanel.Children.Add(Text("Тема",12,Muted));appPanel.Children.Add(appearance);appPanel.Children.Add(startup);var startupHelp=Text("Запуск при входе в учётную запись Windows. Настройка применяется кнопкой «Применить».",12,Muted);startupHelp.Margin=new Thickness(0,8,0,0);appPanel.Children.Add(startupHelp);body.Children.Add(SettingsCard(appPanel));
   var message=Text("",12,Muted);var actions=new WrapPanel {Margin=new Thickness(0,0,0,8)};
-  Anime[] pinnedItems=new Anime[0];
+  Anime[] pinnedItems=new Anime[0];bool? startupBaseline=false;
   Action reload=delegate {
-   enabled.IsChecked=widgetOptions.Enabled;style.SelectedIndex=widgetOptions.Style;
+   appearance.SelectedIndex=service.Appearance.Index;enabled.IsChecked=widgetOptions.Enabled;style.SelectedIndex=widgetOptions.Style;
    pinnedItems=library.Items.OrderBy(a=>a.Title,StringComparer.CurrentCultureIgnoreCase).ToArray();
    pin.ItemsSource=new[]{"Автоматически: последнее изменённое"}.Concat(pinnedItems.Select(a=>a.Title)).ToArray();pin.SelectedIndex=Array.FindIndex(pinnedItems,a=>a.Id==widgetOptions.Pinned)+1;
-   try {startup.IsChecked=AutoStart.Enabled;startup.IsEnabled=true;message.Text="";}catch(Exception ex){startup.IsEnabled=false;message.Text="Не удалось прочитать автозапуск: "+ex.Message;}
+   try {startup.IsChecked=AutoStart.Enabled;startupBaseline=startup.IsChecked;startup.IsEnabled=true;message.Text="";}catch(Exception ex){startup.IsEnabled=false;message.Text="Не удалось прочитать автозапуск: "+ex.Message;}
   };
-  actions.Children.Add(Btn("Применить",delegate {
+  actions.Children.Add(Primary(Btn("Применить",delegate {
    string selected=pin.SelectedIndex<=0?"":pinnedItems[pin.SelectedIndex-1].Id;
    bool wasStartup=false,changedStartup=false;
    try {
-    if(startup.IsEnabled){wasStartup=AutoStart.Enabled;changedStartup=wasStartup!=(startup.IsChecked==true);if(changedStartup)AutoStart.Set(startup.IsChecked==true);}
-    if(!SaveWidgetOptions(selected,Math.Max(0,style.SelectedIndex),enabled.IsChecked==true)){if(changedStartup)AutoStart.Set(wasStartup);return;}
-    message.Text="Настройки сохранены";
+    if(startup.IsEnabled){wasStartup=AutoStart.Enabled;changedStartup=wasStartup!=(startup.IsChecked==true);if(changedStartup || startup.IsChecked==true)AutoStart.Set(startup.IsChecked==true);}
+    bool changedWidget=selected!=widgetOptions.Pinned||Math.Max(0,style.SelectedIndex)!=widgetOptions.Style||(enabled.IsChecked==true)!=widgetOptions.Enabled;
+    if(changedWidget&&!SaveWidgetOptions(selected,Math.Max(0,style.SelectedIndex),enabled.IsChecked==true)){if(changedStartup)AutoStart.Set(wasStartup);return;}
+    service.SetAppearance(AppearanceOptions.Modes[Math.Max(0,appearance.SelectedIndex)]);message.Text="Настройки сохранены";
    } catch(Exception ex){message.Text="Не удалось сохранить настройки: "+ex.Message;}
-  }));
+  })));
   actions.Children.Add(Btn("Сбросить изменения",delegate {reload();message.Text="Показаны сохранённые настройки";}));
   body.Children.Add(actions);body.Children.Add(message);
+  settingsDraft=()=>appearance.SelectedIndex!=service.Appearance.Index||style.SelectedIndex!=widgetOptions.Style||(enabled.IsChecked==true)!=widgetOptions.Enabled||(startup.IsEnabled&&startup.IsChecked!=startupBaseline)||(pin.SelectedIndex<=0?"":pinnedItems[pin.SelectedIndex-1].Id)!=widgetOptions.Pinned;
+  var updatesPanel=new StackPanel();updatesPanel.Children.Add(Text("Обновления приложения",20,Ink));updatesPanel.Children.Add(Text("Проверка, скачивание и установка без ручного копирования файлов",12,Muted));updatesPanel.Children.Add(Btn("Обновления…",delegate{OpenUpdates(settingsDraft);}));body.Children.Add(SettingsCard(updatesPanel));
   var dataPanel=new StackPanel();dataPanel.Children.Add(Text("Данные и резервные копии",20,Ink));
   var dataActions=new WrapPanel {Margin=new Thickness(0,14,0,0)};
-  dataActions.Children.Add(Btn("Открыть папку данных",delegate {try{var path=Path.GetDirectoryName(dataPath);Directory.CreateDirectory(path);Process.Start(new ProcessStartInfo(path){UseShellExecute=true});}catch(Exception ex){MessageBox.Show(owner,"Не удалось открыть папку: "+ex.Message,"Anime Tracker");}}));
+  var import=Btn("Импорт XML из MyAnimeList",ImportMal);import.IsEnabled=!storageBlocked;dataActions.Children.Add(import);
+  dataActions.Children.Add(Btn("Открыть папку данных",delegate {try{var path=Path.GetDirectoryName(dataPath);Directory.CreateDirectory(path);Process.Start(new ProcessStartInfo(path){UseShellExecute=true});}catch(Exception ex){ShowMessage(owner,"Не удалось открыть папку: "+ex.Message,"Anime Tracker");}}));
   dataActions.Children.Add(Btn("Резервная копия ZIP",delegate {
    var picker=new Microsoft.Win32.SaveFileDialog {Title="Сохранить резервную копию",Filter="ZIP архив|*.zip",DefaultExt=".zip",AddExtension=true,FileName="AnimeTracker-backup-"+DateTime.Now.ToString("yyyyMMdd-HHmm")+".zip"};
    if(picker.ShowDialog(owner)!=true)return;
-   try {ExportSettingsBackup(Path.GetDirectoryName(dataPath),picker.FileName);message.Text="Резервная копия сохранена: "+picker.FileName;}catch(Exception ex){MessageBox.Show(owner,"Не удалось сохранить копию: "+ex.Message,"Anime Tracker");}
+   try {ExportSettingsBackup(Path.GetDirectoryName(dataPath),picker.FileName);message.Text="Резервная копия сохранена: "+picker.FileName;}catch(Exception ex){ShowMessage(owner,"Не удалось сохранить копию: "+ex.Message,"Anime Tracker");}
   }));
+  foreach(Button action in dataActions.Children)action.Margin=new Thickness(0,0,8,8);
   dataPanel.Children.Add(dataActions);body.Children.Add(SettingsCard(dataPanel));
   var version=Text("Anime Tracker · Windows · "+FileVersionInfo.GetVersionInfo(System.Reflection.Assembly.GetExecutingAssembly().Location).ProductVersion,11,Muted);version.Margin=new Thickness(0,5,0,10);body.Children.Add(version);
   tab.AddHandler(System.Windows.Controls.Primitives.Selector.SelectedEvent,new RoutedEventHandler(delegate(object sender,RoutedEventArgs e){if(e.OriginalSource==tab)reload();}));reload();return tab;
  }
  static Border SettingsCard(UIElement content) {
-  return new Border {Background=new SolidColorBrush(Color.FromRgb(255,249,225)),CornerRadius=new CornerRadius(8),Padding=new Thickness(20),Margin=new Thickness(0,18,0,14),Child=content};
+  return new Border {Background=ThemeBrush(Color.FromRgb(255,249,225)),CornerRadius=new CornerRadius(8),Padding=new Thickness(20),Margin=new Thickness(0,18,0,14),Child=content};
  }
  internal static void ExportSettingsBackup(string folder,string target) {
   folder=Path.GetFullPath(folder).TrimEnd(Path.DirectorySeparatorChar)+Path.DirectorySeparatorChar;target=Path.GetFullPath(target);

@@ -37,7 +37,7 @@ foreach($asset in $assets){
     if($existing){
         Test-ExistingAsset $existing $asset.Size $asset.Sha256
     }else{
-        $type=if($asset.Name.EndsWith('.zip')){'application/zip'}else{'text/plain'}
+        $type=if($asset.Name.EndsWith('.zip')){'application/zip'}elseif($asset.Name.EndsWith('.tar.gz')){'application/gzip'}else{'text/plain'}
         $existing=Invoke-RestMethod -Method Post -Uri ($upload+'?name='+[Uri]::EscapeDataString($asset.Name)) -Headers $headers -ContentType $type -InFile $asset.Path -TimeoutSec 180
         Test-ExistingAsset $existing $asset.Size $asset.Sha256
     }

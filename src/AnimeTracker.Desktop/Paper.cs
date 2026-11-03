@@ -1,4 +1,4 @@
-﻿using System.Net.Http;
+using System.Net.Http;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -13,11 +13,14 @@ namespace AnimeTracker.Desktop;
 
 internal static class Paper
 {
-    public static readonly IBrush Ink=Brush.Parse("#47361D"),Muted=Brush.Parse("#896F3E"),Accent=Brush.Parse("#B9862C"),Sheet=Brush.Parse("#FFF2BA");
+    public static IBrush Color(string light)=>DesktopTheme.Brush(light);
+    public static readonly IBrush Ink=Paper.Color("#47361D"),Muted=Paper.Color("#725932"),Accent=Paper.Color("#B9862C"),Sheet=Paper.Color("#FFF2BA");
     public static TextBlock Text(string text,double size=13,IBrush? brush=null)=>new(){Text=text,FontSize=size,Foreground=brush??Ink,TextWrapping=TextWrapping.Wrap};
     public static StackPanel Stack(params Control[] children){var panel=new StackPanel{Spacing=9};foreach(var child in children)panel.Children.Add(child);return panel;}
     public static WrapPanel Actions(params Control[] children){var panel=new WrapPanel{Orientation=Orientation.Horizontal};foreach(var child in children){child.Margin=new Thickness(0,0,7,7);panel.Children.Add(child);}return panel;}
     public static Button Button(string title,Action action){var button=new Button{Content=title};button.Click+=(_,_)=>action();return button;}
+    public static Button Primary(Button button){button.Classes.Add("primary");return button;}
+    public static Button Quiet(Button button){button.Classes.Add("quiet");return button;}
     public static Button AsyncButton(string title,Func<Task> action){var button=new Button{Content=title};button.Click+=async(_,_)=>{button.IsEnabled=false;try{await action();}catch(Exception e){if(TopLevel.GetTopLevel(button) is Window owner)await Message(owner,e.Message,"Ошибка");}finally{button.IsEnabled=true;}};return button;}
     public static Border Card(Control content)=>new(){Background=Sheet,CornerRadius=new CornerRadius(10),Padding=new Thickness(18),Margin=new Thickness(0,0,0,12),Child=content};
     public static ComboBox Choice(IEnumerable<string> items,int index=0,double width=180)=>new(){ItemsSource=items.ToArray(),SelectedIndex=index,MinWidth=width,HorizontalAlignment=HorizontalAlignment.Stretch};
@@ -57,6 +60,7 @@ public sealed class PaperListBox:ListBox
 }
 public sealed class PaperScroll:ScrollViewer
 {
+    protected override Type StyleKeyOverride=>typeof(ScrollViewer);
     readonly DispatcherTimer timer=new(){Interval=TimeSpan.FromMilliseconds(16)};
     double target;
     public PaperScroll(){timer.Tick+=(_,_)=>{double delta=target-Offset.Y;if(Math.Abs(delta)<0.5){Offset=new Vector(Offset.X,target);timer.Stop();}else Offset=new Vector(Offset.X,Offset.Y+delta*0.28);};DetachedFromVisualTree+=(_,_)=>timer.Stop();}

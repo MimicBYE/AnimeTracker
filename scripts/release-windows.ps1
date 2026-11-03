@@ -8,7 +8,7 @@ $version = Get-AppVersion $root
 if (!$PackageVersion) { $PackageVersion=$version }
 $buildInfo=New-BuildInfo $version $PackageVersion $Channel $Commit
 $assemblyVersion = Get-AssemblyVersion $version
-# Keep extracted self-test paths below the legacy .NET Framework path limit.
+# Unique staging; self-tests deliberately also exercise managed paths longer than MAX_PATH.
 $run = Join-Path $root ('artifacts\release\' + [Guid]::NewGuid().ToString('N').Substring(0,12))
 $dist = Join-Path $root 'dist/windows'
 $binaryName = 'AnimeTracker-' + $PackageVersion + '-windows-x64'
@@ -73,6 +73,8 @@ Expand-Archive -LiteralPath $binaryZip -DestinationPath $verifyBinary
 $distributedExe = Join-Path (Join-Path $verifyBinary $binaryName) 'AnimeTracker.exe'
 Invoke-Check $distributedExe '--self-test' 'test-result.txt'
 Invoke-Check $distributedExe '--import-test' 'import-test.txt'
+Invoke-Check $distributedExe '--update-process-test' 'update-process-test.txt'
+Invoke-Check $distributedExe '--theme-test' 'theme-test.txt'
 
 # Rebuild only from the extracted source ZIP, with no files from the working checkout.
 $verifySource = Join-Path $run 'verify-source'
@@ -81,11 +83,13 @@ $extractedRoot = Join-Path $verifySource $sourceName
 $rebuilt = Join-Path $run 'rebuilt\AnimeTracker.exe'
 & (Join-Path $extractedRoot 'scripts/build-windows.ps1') -OutputPath $rebuilt -Platform x64
 Invoke-Check $rebuilt '--self-test' 'test-result.txt'
+Invoke-Check $rebuilt '--update-process-test' 'update-process-test.txt'
+Invoke-Check $rebuilt '--theme-test' 'theme-test.txt'
 
 $checksums = foreach ($file in @($binaryZip,$sourceZip)) { $hash = Get-FileHash -LiteralPath $file -Algorithm SHA256; $hash.Hash.ToLowerInvariant() + '  ' + [IO.Path]::GetFileName($file) }
 $checksums | Set-Content -LiteralPath (Join-Path $dist 'SHA256SUMS.txt') -Encoding ascii
 Copy-Item -LiteralPath (Join-Path $root 'docs/RELEASE-NOTES.md') -Destination (Join-Path $dist 'RELEASE-NOTES.md') -Force
-$report = [ordered]@{ version=$version; packageVersion=$PackageVersion; channel=$Channel; commit=$Commit; platform='windows-x64'; cleanArchiveContents='PASS'; distributedSelfTest='PASS'; distributedImportTest='PASS'; sourceRebuild='PASS'; rebuiltSelfTest='PASS'; binaryFiles=$binaryFiles; sourceFiles=$sourceFiles }
+$report = [ordered]@{ version=$version; packageVersion=$PackageVersion; channel=$Channel; commit=$Commit; platform='windows-x64'; cleanArchiveContents='PASS'; distributedSelfTest='PASS'; distributedImportTest='PASS'; distributedThemeTest='PASS'; sourceRebuild='PASS'; rebuiltSelfTest='PASS'; rebuiltThemeTest='PASS'; binaryFiles=$binaryFiles; sourceFiles=$sourceFiles }
 $report | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $run 'verification.json') -Encoding utf8
 Write-Output ("Release ready: {0}" -f $dist)
 Write-Output ("Verification: {0}" -f (Join-Path $run 'verification.json'))

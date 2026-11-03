@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -27,7 +27,7 @@ public partial class Tracker {
   StyleWindow(window); var lifetime=new CancellationTokenSource(); bool closed=false;
   var root=new DockPanel { Margin=new Thickness(24) }; window.Content=root;
   var footer=new StackPanel { Margin=new Thickness(0,14,0,0) }; DockPanel.SetDock(footer,Dock.Bottom); root.Children.Add(footer);
-  var error=Text("",12,Brushes.Firebrick); footer.Children.Add(error);
+  var error=Text("",12,ThemeBrush("#B22222")); footer.Children.Add(error);
   var actions=new WrapPanel(); footer.Children.Add(actions);
   var body=new StackPanel(); var cardScroll=new SmoothScrollViewer { Content=body,Focusable=true,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled }; root.Children.Add(cardScroll);
   var hero=new DockPanel { Margin=new Thickness(0,0,0,20) }; body.Children.Add(hero);
@@ -36,9 +36,9 @@ public partial class Tracker {
   var heading=Text(anime.Title,27,Ink); heading.FontFamily=new FontFamily("Georgia"); heading.Margin=new Thickness(0,8,0,8); headline.Children.Add(heading);
   headline.Children.Add(Text(String.Join(" · ",new[]{anime.English,anime.Japanese,anime.Romaji}.Where(s=>!String.IsNullOrWhiteSpace(s)&&s!=anime.Title).Distinct()),12,Muted));
   headline.Children.Add(Text(anime.Genres.Replace("|"," · "),12,Muted));
-  var progress=new ProgressBar { Minimum=0,Maximum=Math.Max(1,anime.Total>0?anime.Total:anime.Watched),Value=anime.Watched,Height=5,Margin=new Thickness(0,18,0,8),Foreground=Accent,Background=new SolidColorBrush(Color.FromRgb(232,213,157)),BorderThickness=new Thickness(0) }; headline.Children.Add(progress);
+  var progress=new ProgressBar { Minimum=0,Maximum=Math.Max(1,anime.Total>0?anime.Total:anime.Watched),Value=anime.Watched,Height=5,Margin=new Thickness(0,18,0,8),Foreground=Accent,Background=ThemeBrush(Color.FromRgb(232,213,157)),BorderThickness=new Thickness(0) }; headline.Children.Add(progress);
   var progressLabel=Text(anime.Watched+" / "+(anime.Total>0?anime.Total.ToString():"?")+" серий · "+MalImport.StatusLabel(anime.Status),12,Muted); headline.Children.Add(progressLabel);
-  var sheet=new Border { Background=new SolidColorBrush(Color.FromRgb(255,249,225)),CornerRadius=new CornerRadius(9),Padding=new Thickness(18),BorderBrush=new SolidColorBrush(Color.FromRgb(225,207,157)),BorderThickness=new Thickness(1) }; body.Children.Add(sheet);
+  var sheet=new Border { Background=ThemeBrush(Color.FromRgb(255,249,225)),CornerRadius=new CornerRadius(9),Padding=new Thickness(18),BorderBrush=ThemeBrush(Color.FromRgb(225,207,157)),BorderThickness=new Thickness(1) }; body.Children.Add(sheet);
   var fields=new StackPanel(); sheet.Child=fields;
   fields.Children.Add(Text("Прогресс и впечатления",19,Ink));
   var controls=new Grid { Margin=new Thickness(0,12,0,12) }; for(int i=0;i<4;i++) controls.ColumnDefinitions.Add(new ColumnDefinition()); fields.Children.Add(controls);
@@ -64,15 +64,15 @@ public partial class Tracker {
    try { var result=await Catalog.Sequels(new[]{anime.CatalogId},lifetime.Token); if(closed) return; sequelRows.Children.Clear();
     foreach(var entry in result[anime.CatalogId]) { var e=entry; var row=new DockPanel { Margin=new Thickness(0,8,0,0) }; var owned=Ratings.Find(library,e);
      var button=new Button { Content=owned==null?"＋ В планы":"Открыть",IsEnabled=!storageBlocked }; DockPanel.SetDock(button,Dock.Right); row.Children.Add(button); row.Children.Add(Text(e.Title,14,Ink)); sequelRows.Children.Add(row);
-     button.Click+=delegate { try { var found=Ratings.Find(library,e); if(found!=null) OpenAnimeCard(found,window); else { Ratings.AddPlanned(library,e,dataPath); button.Content="Открыть"; Refresh(); } } catch(Exception ex) { error.Text=ex.Message; } };
+     button.Click+=delegate { try { var found=Ratings.Find(library,e); if(found!=null) OpenAnimeCard(found,window); else { service.Add(e); button.Content="Открыть"; Refresh(); } } catch(Exception ex) { error.Text=ex.Message; } };
     } if(sequelRows.Children.Count==0) sequelRows.Children.Add(Text("В каталоге пока нет продолжений.",12,Muted)); Reveal(sequelRows);
    } catch(Exception) { if(!closed) { sequelRows.Children.Clear(); sequelRows.Children.Add(Text("Не удалось загрузить. Сверните и раскройте раздел для повтора.",12,Muted)); sequelsLoaded=false; } }
   };
-  actions.Children.Add(Btn("Сохранить",delegate { if(storageBlocked) return; int w,t; if(!Int32.TryParse(watched.Text,out w)||!Int32.TryParse(total.Text,out t)) { error.Text="Количество серий должно быть целым числом."; return; } try { CardEdits.Save(library,anime,title.Text,w,t,MalImport.StatusKeys[Math.Max(0,status.SelectedIndex)],Math.Max(0,score.SelectedIndex),notes.Text,dataPath); undo=null; Refresh(); window.Close(); } catch(Exception ex) { error.Text="Не удалось сохранить: "+ex.Message; } }));
+  actions.Children.Add(Btn("Сохранить",delegate { if(storageBlocked) return; int w,t; if(!Int32.TryParse(watched.Text,out w)||!Int32.TryParse(total.Text,out t)) { error.Text="Количество серий должно быть целым числом."; return; } try { service.Update(anime,title.Text,w,t,MalImport.StatusKeys[Math.Max(0,status.SelectedIndex)],Math.Max(0,score.SelectedIndex),notes.Text); undo=null; Refresh(); window.Close(); } catch(Exception ex) { error.Text="Не удалось сохранить: "+ex.Message; } }));
   var cancel=Btn("Закрыть без сохранения",delegate { window.Close(); }); cancel.IsCancel=true; actions.Children.Add(cancel);
   QueueCardButton(anime,window,actions);
   actions.Children.Add(Btn("В виджет",delegate { SaveWidgetOptions(anime.Id,widgetOptions.Style); }));
-  actions.Children.Add(Btn("Удалить",delegate { if(storageBlocked) return; try {int index=library.Items.IndexOf(anime);LibraryStorage.Remove(library,anime,dataPath);undo=delegate{LibraryStorage.Insert(library,anime,index,dataPath);};Refresh();window.Close();} catch(Exception ex) { error.Text=ex.Message; } }));
+  actions.Children.Add(Btn("Удалить",delegate { if(storageBlocked) return; try {int index=library.Items.IndexOf(anime);service.Remove(anime);undo=delegate{service.Insert(anime,index);};Refresh();window.Close();} catch(Exception ex) { error.Text=ex.Message; } }));
   window.Loaded+=async delegate { cardScroll.Focus(); cardScroll.ResetToTop(); Reveal(hero); Reveal(sheet,65); if(anime.CatalogId<=0) return;
    try { var entries=await Catalog.ByIds(new[]{anime.CatalogId},lifetime.Token,true); if(closed) return; var entry=entries.FirstOrDefault(); description.Text=entry==null||String.IsNullOrWhiteSpace(entry.Description)?"Описание в каталоге отсутствует.":entry.Description; Reveal(description); }
    catch(Exception) { if(!closed) description.Text="Описание сейчас недоступно. Личные данные можно редактировать без интернета."; }

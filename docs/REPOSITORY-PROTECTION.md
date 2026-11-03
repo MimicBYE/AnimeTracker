@@ -54,3 +54,5 @@ Review dependency changes
 Страницы настроек (нужен доступ владельца): [ветки](https://github.com/MimicBYE/AnimeTracker/settings/branches), [Actions](https://github.com/MimicBYE/AnimeTracker/settings/actions), [участники](https://github.com/MimicBYE/AnimeTracker/settings/access).
 
 Основание: [protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches), [права personal repository](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/repository-access-and-collaboration/permission-levels-for-a-personal-account-repository), [настройки Actions](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/approve-runs-from-forks).
+
+AT-22: добавлен job Linux package. Он обязателен через needs у прежнего required Verify release bundle; прямой список contexts и защита веток не менялись. Комплект новых релизов включает Linux tar.gz.

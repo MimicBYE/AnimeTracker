@@ -1,5 +1,6 @@
 src/AnimeTracker.Windows/App.cs
 src/AnimeTracker.Windows/DesktopHost.cs
+src/AnimeTracker.Windows/AutoStart.cs
 src/AnimeTracker.Windows/Catalog.cs
 src/AnimeTracker.Windows/MalImport.cs
 src/AnimeTracker.Core/MalImportTests.cs
@@ -19,8 +20,30 @@ src/AnimeTracker.Windows/WatchChoices.cs
 src/AnimeTracker.Windows/Version.cs
 src/AnimeTracker.Core/Domain.cs
 src/AnimeTracker.Core/LibraryStorage.cs
+src/AnimeTracker.Core/TrackerFiles.cs
+src/AnimeTracker.Core/Appearance.cs
+src/AnimeTracker.Core/TrackerService.cs
+src/AnimeTracker.Core/TrackerRefresh.cs
+src/AnimeTracker.Core/TrackerTransfers.cs
+src/AnimeTracker.Core/CatalogSource.cs
+tests/Shared/TrackerServiceTests.cs
 src/AnimeTracker.Core/LibraryStorageTests.cs
 src/AnimeTracker.Core/Catalog.cs
 src/AnimeTracker.Core/JsonCodec.cs
 
 src/AnimeTracker.Windows/Settings.cs
+
+src/AnimeTracker.Windows/ThemeResources.cs
+src/AnimeTracker.Windows/WindowsTheme.cs
+tests/Shared/AppearanceTests.cs
+src/AnimeTracker.Windows/ThemeTests.cs
+src/AnimeTracker.Core/AppearanceBinding.cs
+src/AnimeTracker.Windows/SystemAppearance.cs
+tests/Shared/SystemAppearanceTests.cs
+src/AnimeTracker.Core/UpdateRelease.cs
+src/AnimeTracker.Core/UpdatePackage.cs
+src/AnimeTracker.Core/UpdateInstall.cs
+src/AnimeTracker.Core/AppUpdates.cs
+src/AnimeTracker.Windows/AppUpdates.cs
+tests/Shared/UpdateTests.cs
+tests/Shared/UpdateProcessTests.cs

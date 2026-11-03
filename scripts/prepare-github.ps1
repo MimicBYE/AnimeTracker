@@ -1,7 +1,8 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param([string]$OutputDirectory = '', [switch]$SkipWindowsBuild)
 $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath((Split-Path $PSScriptRoot -Parent))
+Import-Module (Join-Path $PSScriptRoot 'LinuxPackage.psm1') -Force
 if (!$OutputDirectory) { $OutputDirectory = Join-Path (Split-Path $root -Parent) 'AnimeTracker-GitHub' }
 $output = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputDirectory)
 if (Test-Path -LiteralPath $output) { throw "Output already exists; choose a new -OutputDirectory: $output" }
@@ -15,8 +16,10 @@ if (!$SkipWindowsBuild) { & (Join-Path $PSScriptRoot 'release-windows.ps1') }
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $windows = Join-Path $root 'dist/windows'
 $mac = Join-Path $root 'dist/macos'
+$linux = Join-Path $root 'dist/linux'
 $windowsNames = @("AnimeTracker-$version-windows-x64.zip", "AnimeTracker-$version-source.zip")
 $macNames = @("AnimeTracker-$macVersion-macos-arm64.zip")
+$linuxNames = @("AnimeTracker-$version-linux-x64.tar.gz")
 $forbidden = '(^|/)(data|covers|imports|artifacts|bin|obj|\.tools|\.git)(/|$)|(^|/)(library|watch-choices|widget-settings|view-settings|personal-order|arcs)\.xml$|(^|/)(startup-error|test-result|import-test)\.txt$|(^|/)\.env($|\.)|\.(pfx|p12|pem|key)$'
 
 function Verify-Archive([string]$Directory,[string]$Name) {
@@ -25,6 +28,12 @@ function Verify-Archive([string]$Directory,[string]$Name) {
     $hash = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
     $expected = @(Get-Content -LiteralPath (Join-Path $Directory 'SHA256SUMS.txt') | Where-Object { $_ -match ('^[0-9a-fA-F]{64}  ' + [regex]::Escape($Name) + '$') })
     if ($expected.Count -ne 1 -or $expected[0].Substring(0,64).ToLowerInvariant() -ne $hash) { throw "Checksum mismatch: $Name" }
+    if($Name.EndsWith('.tar.gz')){
+        $reference=[IO.Compression.ZipFile]::OpenRead((Join-Path $windows $windowsNames[0]))
+        try{$reader=[IO.StreamReader]::new($reference.GetEntry("AnimeTracker-$version-windows-x64/BUILD-INFO.json").Open());try{$context=$reader.ReadToEnd()|ConvertFrom-Json}finally{$reader.Dispose()}}finally{$reference.Dispose()}
+        Test-LinuxPackage $path $version $version $context.channel $context.commit
+        return $hash
+    }
     $zip = [IO.Compression.ZipFile]::OpenRead($path)
     try {
         foreach ($entry in $zip.Entries) {
@@ -38,6 +47,7 @@ function Verify-Archive([string]$Directory,[string]$Name) {
 $hashes = @{}
 foreach ($name in $windowsNames) { $hashes[$name] = Verify-Archive $windows $name }
 foreach ($name in $macNames) { $hashes[$name] = Verify-Archive $mac $name }
+foreach ($name in $linuxNames) { $hashes[$name] = Verify-Archive $linux $name }
 
 $repository = Join-Path $output 'repository'
 $releaseFolder = Join-Path $output ("releases/v" + $version)
@@ -65,7 +75,7 @@ $utf8 = New-Object Text.UTF8Encoding($false)
 function Write-Utf8([string]$Path,[string]$Value) { [IO.File]::WriteAllText($Path,$Value,$utf8) }
 $allChecksums = @()
 $releaseChecksums = @()
-foreach ($pair in @(@{Names=$windowsNames;Source=$windows},@{Names=$macNames;Source=$mac})) {
+foreach ($pair in @(@{Names=$windowsNames;Source=$windows},@{Names=$macNames;Source=$mac},@{Names=$linuxNames;Source=$linux})) {
     foreach ($name in $pair.Names) {
         Copy-Item -LiteralPath (Join-Path $pair.Source $name) -Destination (Join-Path $releaseFolder $name)
         $releaseChecksums += $hashes[$name] + '  ' + $name
@@ -80,8 +90,8 @@ $instructions = @"
 # Anime Tracker — папка для GitHub
 
 1. repository/ — исходники для репозитория. Загружайте содержимое этой папки, включая .gitignore и .gitattributes.
-2. releases/v$version/ — вложения единого релиза v${version}: Windows ZIP, macOS ZIP и архив исходников. Текст описания — RELEASE-NOTES.md.
-3. SHA256SUMS.txt содержит контрольные суммы всех трёх ZIP-файлов. Общий список с относительными путями — releases/SHA256SUMS.txt.
+2. releases/v$version/ — вложения единого релиза v${version}: Windows ZIP, macOS ZIP, Linux tar.gz и архив исходников. Текст описания — RELEASE-NOTES.md.
+3. SHA256SUMS.txt содержит контрольные суммы всех четырёх архивов. Общий список с относительными путями — releases/SHA256SUMS.txt.
 
 В исходный репозиторий входит только repository/; готовые ZIP предназначены для вложений Releases.
 
@@ -110,4 +120,4 @@ foreach ($file in $files | Where-Object { $_.Extension -eq '.md' }) {
 $report = [ordered]@{ version=$version; windowsVersion=$version; macVersion=$macVersion; sourceFileCount=$files.Count; archiveReadability='PASS'; sha256='PASS'; privateDataExcluded='PASS'; generatedFilesExcluded='PASS'; secretAndLocalPathPatternScan='PASS'; localMarkdownLinks='PASS'; ownSourceLicense='not assigned'; macNativeLaunch='not tested'; releaseKind='release'; published=$false }
 Write-Utf8 (Join-Path $output 'verification.json') ($report | ConvertTo-Json -Depth 4)
 Write-Output "GitHub directory ready: $output"
-Write-Output ("PASS: {0} source files, 3 archives, checksums, documentation links, no private/build data." -f $files.Count)
+Write-Output ("PASS: {0} source files, 4 archives, checksums, documentation links, no private/build data." -f $files.Count)
