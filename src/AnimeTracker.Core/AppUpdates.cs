@@ -20,6 +20,7 @@ public sealed class AppUpdates:IDisposable {
  public UpdateRelease Available {get;private set;}
  public bool Busy {get;private set;}
  public string Status {get;private set;}
+ public string LastResult {get;private set;}
  public double Progress {get;private set;}
  public event Action Changed;
  DateTime checkedAt=DateTime.MinValue;CancellationTokenSource operation;
@@ -31,8 +32,9 @@ public sealed class AppUpdates:IDisposable {
   Build=new UpdateBuild{applicationVersion=fallback,packageVersion=fallback,channel="local",commit="local"};
   var info=UpdatePackage.BuildPath(Target,platform);try{if(File.Exists(info))Build=UpdateBuild.Read(info);}catch(IOException){}catch(InvalidDataException){}catch(UnauthorizedAccessException){}
   Options=UpdateOptions.Load(optionsPath,Build.channel=="dev");Status="Версия "+Build.packageVersion;
-  try{var latest=Directory.Exists(StateRoot)?Directory.GetDirectories(StateRoot,"update-*").OrderByDescending(p=>Directory.GetLastWriteTimeUtc(p)).FirstOrDefault():null;if(latest!=null&&File.Exists(Path.Combine(latest,"result.txt")))Status=File.ReadAllText(Path.Combine(latest,"result.txt"));}catch(IOException){}catch(UnauthorizedAccessException){}
+  ReloadResult();
  }
+ public void ReloadResult(){LastResult="";try{var latest=Directory.Exists(StateRoot)?Directory.GetDirectories(StateRoot,"update-*").Where(p=>File.Exists(Path.Combine(p,"result.txt"))).OrderByDescending(p=>File.GetLastWriteTimeUtc(Path.Combine(p,"result.txt"))).FirstOrDefault():null;if(latest!=null&&new FileInfo(Path.Combine(latest,"result.txt")).Length<=65536)LastResult=File.ReadAllText(Path.Combine(latest,"result.txt"));}catch(IOException){}catch(UnauthorizedAccessException){}}
  void Notify(){if(Changed!=null)Changed();}
  public void SetOptions(bool automatic,bool development){if(Busy)throw new InvalidOperationException("Дождитесь завершения операции обновления.");var next=new UpdateOptions{Automatic=automatic,Development=development};next.Save(optionsPath);bool channelChanged=Options.Development!=development;Options=next;if(channelChanged){Available=null;checkedAt=DateTime.MinValue;}Status=Available==null?"Настройки обновлений сохранены":"Доступна версия "+Available.Version;Notify();}
  public async Task Check(bool force,CancellationToken token){

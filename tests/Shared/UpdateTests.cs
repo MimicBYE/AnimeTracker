@@ -8,6 +8,9 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+#if NET10_0
+using System.Formats.Tar;
+#endif
 
 namespace AnimeTracker {
 public static class UpdateTests {
@@ -32,6 +35,8 @@ public static class UpdateTests {
   root=Path.Combine(root,"updates");Directory.CreateDirectory(root);var old=DateTime.Parse("2026-10-01T00:00:00Z").ToUniversalTime();var digest=new string('a',64);
   var list=UpdateRelease.Parse("["+String.Join(",",new[]{Release("1.0.1","windows-x64",digest,3,"2026-10-01T00:00:00Z"),Release("1.0.1-dev.10","windows-x64",digest,3,"2026-10-30T00:00:00Z"),Release("1.0.1-dev.11","windows-x64",digest,3,"2026-10-29T00:00:00Z")})+"]","windows-x64");
   Check(UpdateRelease.Select(list,"1.0.1",false,old)==null,"stable opted into dev");Check(UpdateRelease.Select(list,"1.0.1",true,old).Version=="1.0.1-dev.11","numeric dev order / opt in");Check(UpdateRelease.Select(list,"1.0.1-dev.11",true,old)==null,"dev downgraded to old stable/run");
+  var final=UpdateRelease.Parse("["+Release("1.0.1","windows-x64",digest,3,"2026-11-03T00:00:00Z")+"]","windows-x64");
+  Check(UpdateRelease.Select(final,"1.0.1-dev.11",false,old).Version=="1.0.1","new stable after dev not offered");
   Check(UpdateRelease.Parse("["+Release("1.0.2","macos-arm64",digest,3,"2026-10-31T00:00:00Z")+"]","windows-x64").Count==0,"wrong platform accepted");
   foreach(var bad in new[]{"v1.0.1","1.0.1-beta","../../1","1.0.-1","99999999999999999999.0"})Reject(()=>UpdateVersion.Parse(bad),"invalid version");
   var hostile="["+Release("1.0.2","windows-x64",digest,3,"2026-10-31T00:00:00Z")+"]";Check(UpdateRelease.Parse(hostile.Replace("https://github.com/","https://evil.invalid/"),"windows-x64").Count==0,"hostile asset URL");Check(UpdateRelease.Parse(hostile.Replace("sha256:","md5:"),"windows-x64").Count==0,"missing SHA256");
@@ -44,6 +49,17 @@ public static class UpdateTests {
    using(var cancelled=new CancellationTokenSource()){cancelled.Cancel();Reject(()=>client.Download(release,corrupt,null,cancelled.Token).GetAwaiter().GetResult(),"cancel ignored");}
   }
   var extracted=UpdatePackage.Extract(archive,Path.Combine(root,"extracted"),"windows-x64","1.0.2",CancellationToken.None);UpdatePackage.Validate(extracted,"windows-x64","1.0.2");
+#if NET10_0
+  var linux=Path.Combine(root,"tar-source","AnimeTracker-1.0.2-linux-x64");Build(linux,"linux-x64","1.0.2");
+  foreach(var kind in new[]{"valid","traversal","link"}){
+   var tarPath=Path.Combine(root,kind+".tar.gz");using(var output=File.Create(tarPath))using(var gzip=new GZipStream(output,CompressionLevel.Optimal))using(var tar=new TarWriter(gzip)){
+    if(kind=="valid")foreach(var name in UpdatePackage.Files(linux)){var entry=new UstarTarEntry(TarEntryType.RegularFile,"AnimeTracker-1.0.2-linux-x64/"+name.Replace(Path.DirectorySeparatorChar,'/')){Mode=(UnixFileMode)0x1ed};using(var input=File.OpenRead(Path.Combine(linux,name))){entry.DataStream=input;tar.WriteEntry(entry);}}
+    else{var entry=new UstarTarEntry(kind=="link"?TarEntryType.SymbolicLink:TarEntryType.RegularFile,kind=="link"?"link":"../escape");if(kind=="link")entry.LinkName="/outside";tar.WriteEntry(entry);}
+   }
+   if(kind=="valid"){var unpacked=UpdatePackage.Extract(tarPath,Path.Combine(root,"tar-valid"),"linux-x64","1.0.2",CancellationToken.None);if(!OperatingSystem.IsWindows())Check((File.GetUnixFileMode(UpdatePackage.Executable(unpacked,"linux-x64"))&UnixFileMode.UserExecute)!=0,"TAR execute mode lost");}
+   else Reject(()=>UpdatePackage.Extract(tarPath,Path.Combine(root,"tar-"+kind),"linux-x64","1.0.2",CancellationToken.None),"dangerous TAR accepted");
+  }
+#endif
   foreach(var name in new[]{"../escape","/absolute","C:/outside","a\\b","a/../b","a./b"})Reject(()=>UpdatePackage.Within(root,name),"traversal accepted");
   foreach(var kind in new[]{"traversal","link","duplicate"}){
    var evil=Path.Combine(root,kind+".zip");using(var zip=ZipFile.Open(evil,ZipArchiveMode.Create)){var entry=zip.CreateEntry(kind=="traversal"?"../escape":"same");if(kind=="link")entry.ExternalAttributes=unchecked((int)0xa1ff0000);using(var output=entry.Open())output.WriteByte(1);if(kind=="duplicate")zip.CreateEntry("same");}
@@ -51,15 +67,28 @@ public static class UpdateTests {
   }
   foreach(var platform in new[]{"windows-x64","linux-x64","macos-arm64"})foreach(var outcome in new[]{"success","failure","write-failure"}){
    var p=Plan(Path.Combine(root,platform+"-"+outcome),platform);var personal=File.ReadAllBytes(Path.Combine(p.DataRoots[0],"library.xml"));string metadata=File.ReadAllText(UpdatePackage.BuildPath(p.Target,p.Platform));File.WriteAllText(Path.Combine(p.Target,"unrelated.txt"),"keep");
+   if(platform=="linux-x64"){File.WriteAllText(Path.Combine(p.Source,"new-runtime.dll"),"new runtime");p.Files.Add(new UpdateFile{Name="new-runtime.dll",Hash=UpdatePackage.Hash(Path.Combine(p.Source,"new-runtime.dll"))});p.Save();}
    p=UpdatePlan.Load(p.PathName);int writes=0;
    if(outcome=="success"){UpdateInstall.Apply(p,()=>true,null);Check(UpdateBuild.Read(UpdatePackage.BuildPath(p.Target,p.Platform)).packageVersion=="1.0.2","installed version");}
    else{Reject(()=>UpdateInstall.Apply(p,()=>false,outcome=="write-failure"?(Action<string>)(name=>{if(++writes==2||p.Platform=="macos-arm64")throw new IOException("injected write failure");}):null),"failed install accepted");Check(File.ReadAllText(UpdatePackage.BuildPath(p.Target,p.Platform))==metadata,"rollback metadata");}
    Check(File.ReadAllBytes(Path.Combine(p.DataRoots[0],"library.xml")).SequenceEqual(personal),"personal data changed");if(platform!="macos-arm64"||outcome!="success")Check(File.ReadAllText(Path.Combine(p.Target,"unrelated.txt"))=="keep","unrelated file changed");
+   Check(File.ReadAllBytes(Path.Combine(p.Backup,"data-0","library.xml")).SequenceEqual(personal),"personal backup bytes");if(platform=="linux-x64")Check(File.Exists(Path.Combine(p.Target,"new-runtime.dll"))==(outcome=="success"),"new-only runtime rollback");
+  }
+  // Exercise normal (non-prefixed) managed paths, including deep backup and rollback destinations.
+  var deep=root;while(deep.Length<320)deep=Path.Combine(deep,"long-path-segment");
+  foreach(var success in new[]{true,false}){
+   var p=Plan(Path.Combine(deep,success?"success":"rollback"),"windows-x64");var original=UpdatePackage.Hash(UpdatePackage.Executable(p.Target,p.Platform));var personal=File.ReadAllBytes(Path.Combine(p.DataRoots[0],"library.xml"));p=UpdatePlan.Load(p.PathName);
+   if(success)UpdateInstall.Apply(p,()=>true,null);else Reject(()=>UpdateInstall.Apply(p,()=>false,null),"long-path unhealthy install accepted");
+   Check(UpdateBuild.Read(UpdatePackage.BuildPath(p.Target,p.Platform)).packageVersion==(success?"1.0.2":"1.0.1"),"long-path installed/rollback version");
+   Check(success||UpdatePackage.Hash(UpdatePackage.Executable(p.Target,p.Platform))==original,"long-path rollback program bytes");
+   Check(File.ReadAllBytes(Path.Combine(p.Backup,"data-0","library.xml")).SequenceEqual(personal)&&File.ReadAllBytes(Path.Combine(p.DataRoots[0],"library.xml")).SequenceEqual(personal),"long-path backup/personal bytes");
   }
   var tampered=Plan(Path.Combine(root,"tamper"),"windows-x64");File.AppendAllText(Path.Combine(tampered.Source,"AnimeTracker.exe"),"changed");Reject(()=>tampered.Validate(),"staged tamper accepted");
   var files=new TrackerFiles(Path.Combine(root,"preferences"));var options=UpdateOptions.Load(files.PathFor("update-settings.xml"),true);Check(options.Automatic&&options.Development,"default dev stream");options.Development=false;options.Save(files.PathFor("update-settings.xml"));Check(!UpdateOptions.Load(files.PathFor("update-settings.xml"),true).Development,"stream persistence");
   var clock=DateTime.UtcNow;var fake=new Http{Json="[]"};using(var service=new AppUpdates(files,Path.Combine(root,"program","AnimeTracker.exe"),"windows-x64",Path.Combine(root,"state-service"),"1.0.1",new UpdateClient(fake),()=>clock)){
    await service.Check(false,CancellationToken.None);int requests=fake.Requests;await service.Check(false,CancellationToken.None);Check(fake.Requests==requests,"automatic check not throttled");service.SetOptions(false,false);await service.Check(false,CancellationToken.None);Check(fake.Requests==requests,"automatic opt-out ignored");await service.Check(true,CancellationToken.None);Check(fake.Requests>requests,"manual check blocked by opt-out");
+   Directory.CreateDirectory(files.PathFor("update-settings.xml")+".tmp");Reject(()=>service.SetOptions(true,true),"settings failed write accepted");Check(!service.Options.Automatic&&!service.Options.Development,"failed write changed live options");Directory.Delete(files.PathFor("update-settings.xml")+".tmp");
+   var result=Path.Combine(service.StateRoot,"update-"+Guid.NewGuid().ToString("N"),"result.txt");Directory.CreateDirectory(Path.GetDirectoryName(result)??root);File.WriteAllText(result,"Rollback: saved backup");service.ReloadResult();await service.Check(true,CancellationToken.None);Check(service.LastResult=="Rollback: saved backup","check erased installation result");
   }
   Check(UpdateInstall.Quote("a b")=="\"a b\""&&UpdateInstall.Quote("a\\")=="\"a\\\\\""&&UpdateInstall.Quote("a\"b")=="\"a\\\"b\"","Windows command-line quoting");
  }

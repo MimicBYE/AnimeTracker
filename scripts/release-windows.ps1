@@ -8,7 +8,7 @@ $version = Get-AppVersion $root
 if (!$PackageVersion) { $PackageVersion=$version }
 $buildInfo=New-BuildInfo $version $PackageVersion $Channel $Commit
 $assemblyVersion = Get-AssemblyVersion $version
-# Keep extracted self-test paths below the legacy .NET Framework path limit.
+# Unique staging; self-tests deliberately also exercise managed paths longer than MAX_PATH.
 $run = Join-Path $root ('artifacts\release\' + [Guid]::NewGuid().ToString('N').Substring(0,12))
 $dist = Join-Path $root 'dist/windows'
 $binaryName = 'AnimeTracker-' + $PackageVersion + '-windows-x64'

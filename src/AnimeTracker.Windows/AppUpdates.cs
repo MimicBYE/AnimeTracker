@@ -11,7 +11,7 @@ public partial class Tracker {
  AppUpdates appUpdates;
  void InitializeUpdates(){appUpdates=new AppUpdates(service.Files,System.Reflection.Assembly.GetExecutingAssembly().Location,"windows-x64",Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"AnimeTracker.Updates"),System.Diagnostics.FileVersionInfo.GetVersionInfo(System.Reflection.Assembly.GetExecutingAssembly().Location).ProductVersion);}
  void OpenUpdates(Func<bool> draft){
-  if(appUpdates==null)return;
+  if(appUpdates==null)return;appUpdates.ReloadResult();
   if(Windows.Cast<Window>().Any(w=>w!=widget&&w!=full)){ShowMessage("Завершите работу с открытой карточкой или диалогом, затем откройте обновления.");return;}
   var owner=full;var window=new Window{Title="Обновления Anime Tracker",Width=650,Height=620,MinWidth=450,MinHeight=420,Owner=owner,WindowStartupLocation=WindowStartupLocation.CenterOwner};StyleWindow(window);
   var panel=new DockPanel{Margin=new Thickness(24)};window.Content=panel;
@@ -30,7 +30,7 @@ public partial class Tracker {
    try{var progress=new Progress<double>(value=>{if(window.IsLoaded){bar.Value=value;status.Text="Загрузка: "+Math.Round(value)+"%";}});var plan=await appUpdates.Prepare(progress,episodeLifetime.Token);if(!storageBlocked)service.Save();AppUpdates.Launch(plan);quitting=true;if(tray!=null)tray.Dispose();Shutdown();}
    catch(OperationCanceledException){}catch(Exception error){ShowMessage(window,error.Message,"Обновление не установлено");}
   }));actions.Children.Add(install);actions.Children.Add(Btn("Отмена загрузки",appUpdates.Cancel));actions.Children.Add(Btn("Закрыть",window.Close));
-  Action refresh=delegate{if(!window.Dispatcher.CheckAccess()){window.Dispatcher.BeginInvoke(new Action(()=>{if(window.IsLoaded){status.Text=appUpdates.Status;}}));return;}status.Text=appUpdates.Status;check.IsEnabled=!appUpdates.Busy;install.IsEnabled=!appUpdates.Busy&&appUpdates.Available!=null;automatic.IsEnabled=development.IsEnabled=!appUpdates.Busy;notes.Text=appUpdates.Available==null?"Проверка и установка выполняются без ручного копирования файлов.":("Новая версия: "+appUpdates.Available.Version+"\n\n"+(appUpdates.Available.Notes??"").Substring(0,Math.Min(16000,(appUpdates.Available.Notes??"").Length)));};
+  Action refresh=delegate{if(!window.Dispatcher.CheckAccess()){window.Dispatcher.BeginInvoke(new Action(()=>{if(window.IsLoaded){status.Text=appUpdates.Status;}}));return;}status.Text=appUpdates.Status;check.IsEnabled=!appUpdates.Busy;install.IsEnabled=!appUpdates.Busy&&appUpdates.Available!=null;automatic.IsEnabled=development.IsEnabled=!appUpdates.Busy;notes.Text=appUpdates.Available==null?"Проверка и установка выполняются без ручного копирования файлов.":("Новая версия: "+appUpdates.Available.Version+"\n\n"+(appUpdates.Available.Notes??"").Substring(0,Math.Min(16000,(appUpdates.Available.Notes??"").Length)));if(!String.IsNullOrEmpty(appUpdates.LastResult))notes.Text+="\n\nПоследняя установка:\n"+appUpdates.LastResult;};
   appUpdates.Changed+=refresh;window.Closed+=delegate{appUpdates.Changed-=refresh;appUpdates.Cancel();};refresh();window.ShowDialog();
  }
 }

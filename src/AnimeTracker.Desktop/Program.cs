@@ -67,7 +67,7 @@ public sealed partial class App : Application
                 openRequests.Tick+=(_,_)=>{var path=Store.FilePath(".open-request");if(File.Exists(path)){try{File.Delete(path);}catch(IOException){return;}OpenLibrary();}};openRequests.Start();
             }
             desktop.Exit += (_,_) => { LibraryWindow.FlushPendingFilters();refresh.Stop();openRequests?.Stop();lifetime.Cancel();Updates?.Dispose();tray?.Dispose(); };
-            Dispatcher.UIThread.Post(()=>AnimeTracker.UpdateInstall.Acknowledge(Program.Arguments,Updates!.Build.packageVersion),DispatcherPriority.ApplicationIdle);
+            if(Updates!=null)Dispatcher.UIThread.Post(()=>AnimeTracker.UpdateInstall.Acknowledge(Program.Arguments,Updates.Build.packageVersion),DispatcherPriority.ApplicationIdle);
             if(Program.Arguments.Contains("--linux-smoke-test"))Dispatcher.UIThread.Post(RunLinuxSmoke,DispatcherPriority.ApplicationIdle);
         }
         base.OnFrameworkInitializationCompleted();

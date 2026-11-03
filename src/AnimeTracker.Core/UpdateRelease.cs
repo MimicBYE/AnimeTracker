@@ -48,7 +48,7 @@ public sealed class UpdateRelease {
  }
  public static UpdateRelease Select(IEnumerable<UpdateRelease> releases,string current,bool development,DateTime currentPublished){
   var before=UpdateVersion.Parse(current);
-  var candidates=releases.Where(r=>{var v=UpdateVersion.Parse(r.Version);if(v.Development>0&&!development)return false;int order=v.Base.CompareTo(before.Base);if(order!=0)return order>0;if(r.Version==current)return false;if(before.Development>0)return v.Development>before.Development;return development&&v.Development>0&&r.Published>currentPublished;}).ToArray();
+  var candidates=releases.Where(r=>{var v=UpdateVersion.Parse(r.Version);if(v.Development>0&&!development)return false;int order=v.Base.CompareTo(before.Base);if(order!=0)return order>0;if(r.Version==current)return false;if(before.Development>0)return v.Development==0?r.Published>currentPublished:v.Development>before.Development;return development&&v.Development>0&&r.Published>currentPublished;}).ToArray();
   if(candidates.Length==0)return null;var best=candidates.OrderByDescending(r=>UpdateVersion.Parse(r.Version).Base).First();var same=candidates.Where(r=>UpdateVersion.Parse(r.Version).Base==UpdateVersion.Parse(best.Version).Base);
   var stable=same.Where(r=>UpdateVersion.Parse(r.Version).Development==0).OrderByDescending(r=>r.Published).FirstOrDefault();var dev=same.Where(r=>UpdateVersion.Parse(r.Version).Development>0).OrderByDescending(r=>UpdateVersion.Parse(r.Version).Development).FirstOrDefault();
   return stable!=null&&(dev==null||stable.Published>=dev.Published)?stable:dev;

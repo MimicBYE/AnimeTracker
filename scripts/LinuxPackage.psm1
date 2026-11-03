@@ -19,7 +19,7 @@ function Test-LinuxPackage {
             } elseif($name -eq ($prefix+'BUILD-INFO.json')) {
                 if($entry.Length -gt 16384){throw 'Oversized build metadata.'}
                 $reader=[IO.StreamReader]::new($entry.DataStream,[Text.Encoding]::UTF8,$true,1024,$true);try{$info=$reader.ReadToEnd()|ConvertFrom-Json}finally{$reader.Dispose()}
-                if($info.applicationVersion -ne $BaseVersion -or $info.packageVersion -ne $PackageVersion -or $info.channel -ne $Channel -or $info.commit -ne $Commit){throw 'Linux artifact provenance mismatch.'}
+                if($info.updateProtocol -ne 1 -or $info.applicationVersion -ne $BaseVersion -or $info.packageVersion -ne $PackageVersion -or $info.channel -ne $Channel -or $info.commit -ne $Commit){throw 'Linux artifact provenance/protocol mismatch.'}
             }
             if($entry.DataStream){$entry.DataStream.CopyTo([IO.Stream]::Null)}
         }
