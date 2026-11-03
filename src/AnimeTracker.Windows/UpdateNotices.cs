@@ -19,11 +19,12 @@ public partial class Tracker {
  void AttachNoticeTimeout(Window window){
   var clock=new System.Diagnostics.Stopwatch();UpdateNoticeLifetime lifetime=null;var timer=new DispatcherTimer();
   Action schedule=delegate{
-   timer.Stop();if(lifetime==null)return;bool paused=window.IsMouseOver||window.IsKeyboardFocusWithin;lifetime.SetPaused(paused);if(paused)return;
+   timer.Stop();if(lifetime==null)return;bool paused=window.IsMouseOver||(window.IsActive&&window.IsKeyboardFocusWithin);lifetime.SetPaused(paused);if(paused)return;
    var remaining=lifetime.Remaining;if(remaining<=TimeSpan.Zero){window.Close();return;}timer.Interval=remaining;timer.Start();
   };
   window.Loaded+=delegate{clock.Start();lifetime=new UpdateNoticeLifetime(()=>clock.Elapsed);schedule();};
   window.MouseEnter+=delegate{schedule();};window.MouseLeave+=delegate{schedule();};window.IsKeyboardFocusWithinChanged+=delegate{schedule();};timer.Tick+=delegate{schedule();};
+  window.Activated+=delegate{schedule();};window.Deactivated+=delegate{schedule();};
   window.Closing+=delegate{timer.Stop();clock.Stop();lifetime=null;};window.Closed+=delegate{timer.Stop();};
  }
  void QueueUpdateNotice(){Dispatcher.BeginInvoke(new Action(TryShowUpdateNotice),DispatcherPriority.ApplicationIdle);}

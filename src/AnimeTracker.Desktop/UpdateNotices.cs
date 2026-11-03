@@ -22,9 +22,9 @@ public sealed partial class App
     static void AttachNoticeTimeout(Window window)
     {
         var clock=new System.Diagnostics.Stopwatch();UpdateNoticeLifetime? lifetime=null;var timer=new DispatcherTimer();
-        void Schedule(){timer.Stop();if(lifetime==null)return;bool paused=window.IsPointerOver||window.IsKeyboardFocusWithin;lifetime.SetPaused(paused);if(paused)return;var remaining=lifetime.Remaining;if(remaining<=TimeSpan.Zero){window.Close();return;}timer.Interval=remaining;timer.Start();}
+        void Schedule(){timer.Stop();if(lifetime==null)return;bool paused=window.IsPointerOver||(window.IsActive&&window.IsKeyboardFocusWithin);lifetime.SetPaused(paused);if(paused)return;var remaining=lifetime.Remaining;if(remaining<=TimeSpan.Zero){window.Close();return;}timer.Interval=remaining;timer.Start();}
         window.Opened+=(_,_)=>{clock.Start();lifetime=new UpdateNoticeLifetime(()=>clock.Elapsed);Schedule();};
-        window.PropertyChanged+=(_,e)=>{if(e.Property==Avalonia.Input.InputElement.IsPointerOverProperty||e.Property==Avalonia.Input.InputElement.IsKeyboardFocusWithinProperty)Schedule();};
+        window.PropertyChanged+=(_,e)=>{if(e.Property==Avalonia.Input.InputElement.IsPointerOverProperty||e.Property==Avalonia.Input.InputElement.IsKeyboardFocusWithinProperty||e.Property==Window.IsActiveProperty)Schedule();};
         timer.Tick+=(_,_)=>Schedule();window.Closing+=(_,_)=>{timer.Stop();clock.Stop();lifetime=null;};window.Closed+=(_,_)=>timer.Stop();
     }
     internal void TryShowUpdateNotice()
