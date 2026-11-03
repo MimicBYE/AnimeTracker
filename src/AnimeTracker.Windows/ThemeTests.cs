@@ -16,6 +16,29 @@ public partial class Tracker {
  static void ThemeCheck(bool ok,string name){if(!ok)throw new Exception("Theme: "+name);}
  static IEnumerable<DependencyObject> ThemeChildren(DependencyObject parent){yield return parent;foreach(var child in LogicalTreeHelper.GetChildren(parent).OfType<DependencyObject>())foreach(var descendant in ThemeChildren(child))yield return descendant;}
  static Color ThemeColor(Brush brush){return ((SolidColorBrush)brush).Color;}
+ void UpdateNoticeUiTest(string root,Window host){
+  using(var fixture=new UpdateNoticeTests.Fixture(Path.Combine(root,"notice-ui"))){
+   full=host;appUpdates=fixture.Updates;appUpdates.Changed+=QueueUpdateNotice;settingsDraft=()=>false;fixture.Check().GetAwaiter().GetResult();
+   var blocker=new Window{Owner=host,Title="Карточка",Opacity=0,ShowInTaskbar=false,ShowActivated=false};blocker.Show();TryShowUpdateNotice();ThemeCheck(updateNotice==null&&appUpdates.NoticeDue,"notice interrupted card");blocker.Close();Dispatcher.Invoke(new Action(delegate{}),DispatcherPriority.ApplicationIdle);
+   ThemeCheck(updateNotice!=null&&!updateNotice.ShowActivated&&!updateNotice.ShowInTaskbar&&host.IsEnabled,"nonmodal update notice");var first=updateNotice;TryShowUpdateNotice();ThemeCheck(updateNotice==first,"duplicate update notice");
+   foreach(bool dark in new[]{false,true}){service.SetAppearance(dark?"dark":"light");ThemeCheck(ThemeColor(first.Background)==ThemeBrush("#F8EECC").Color,"notice theme");}
+   ThemeChildren(first).OfType<Button>().Single(b=>b.Content as string=="Напомнить позже").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Dispatcher.Invoke(new Action(delegate{}),DispatcherPriority.ApplicationIdle);ThemeCheck(updateNotice==null&&!appUpdates.NoticeDue,"notice Later");
+   ThemeCheck(UpdateOptions.Load(service.Files.PathFor("notice-ui/update-settings.xml"),false).RemindAfter==fixture.UtcNow.AddHours(6),"notice Later persistence");
+   fixture.UtcNow=fixture.UtcNow.AddHours(6);TryShowUpdateNotice();ThemeCheck(updateNotice!=null,"notice expiry");updateNotice.Close();ThemeCheck(!appUpdates.NoticeDue,"notice X did not snooze");
+   fixture.Version="1.1.2";fixture.Check().GetAwaiter().GetResult();Dispatcher.Invoke(new Action(delegate{}),DispatcherPriority.ApplicationIdle);ThemeCheck(updateNotice!=null,"new release suppressed");
+   bool confirmed=false;Exception failure=null;var started=DateTime.UtcNow;var poll=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(20)};
+   poll.Tick+=delegate{
+    try{
+     var progress=Windows.Cast<Window>().FirstOrDefault(w=>w.Title=="Обновления Anime Tracker");var confirmation=Windows.Cast<Window>().FirstOrDefault(w=>w.Title=="Установить 1.1.2?");
+     if(confirmation!=null){confirmed=true;ThemeChildren(confirmation).OfType<Button>().Single(b=>b.Content as string=="Отмена").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));ThemeChildren(progress).OfType<Button>().Single(b=>b.Content as string=="Закрыть").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));poll.Stop();}
+     else if(DateTime.UtcNow-started>TimeSpan.FromSeconds(8))throw new Exception("notification install confirmation timeout");
+    }catch(Exception error){failure=error;poll.Stop();foreach(var window in Windows.Cast<Window>().Where(w=>w!=widget&&w!=full&&w!=updateNotice).ToArray())window.Close();}
+   };
+   poll.Start();ThemeChildren(updateNotice).OfType<Button>().Single(b=>b.Content as string=="Обновить").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Dispatcher.Invoke(new Action(delegate{}),DispatcherPriority.ApplicationIdle);poll.Stop();
+   if(failure!=null)throw failure;ThemeCheck(confirmed&&fixture.Downloads==0,"Update did not go straight to cancelable confirmation");
+   appUpdates.Changed-=QueueUpdateNotice;appUpdates=null;
+  }
+ }
  static void ThemeCapture(FrameworkElement content,string folder,string name,double width,double height){
   if(folder==null)return;Directory.CreateDirectory(folder);content.Measure(new Size(width,height));content.Arrange(new Rect(0,0,width,height));content.UpdateLayout();
   var bitmap=new RenderTargetBitmap((int)width,(int)height,96,96,PixelFormats.Pbgra32);bitmap.Render(content);var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(bitmap));using(var output=File.Create(Path.Combine(folder,name+".png")))encoder.Save(output);
@@ -62,7 +85,8 @@ public partial class Tracker {
    ThemeCheck(libraryEvents==0,"Theme-only Settings reset library/widget");
    ThemeCheck(File.ReadAllBytes(app.service.LibraryPath).SequenceEqual(original),"personal library changed");
    var notice=app.MessageWindow(host,"Сообщение в выбранной теме","Anime Tracker");notice.Opacity=0;notice.ShowInTaskbar=false;notice.Show();notice.UpdateLayout();ThemeCheck(ThemeColor(notice.Background)==ThemeBrush("#F8EECC").Color,"application message");notice.Close();
-   File.WriteAllText(report,"PASS: WPF light/dark repeated live switch; text fields, row/paper brushes, combo popup, opaque widget; settings draft/apply/reset/restart; simulated system light/dark/background signal, manual override, no OS-triggered writes; themed message; personal XML unchanged. Synthetic data; no Explorer attachment, tray, autostart mutation or native OS-scale claim.");
+   app.UpdateNoticeUiTest(root,host);ThemeCheck(File.ReadAllBytes(app.service.LibraryPath).SequenceEqual(original),"update notice changed library");
+   File.WriteAllText(report,"PASS: WPF themes and settings; update notification nonmodal/no activation, live light/dark, card deferral, duplicate suppression, persisted Later/X/expiry/new version, direct update confirmation/cancel without download; personal XML unchanged. Synthetic data; no Explorer attachment, tray, autostart mutation or native OS-scale claim.");
   }catch(Exception e){File.WriteAllText(report,"FAIL "+e);Environment.ExitCode=1;}
   finally{if(app!=null){app.quitting=true;if(host!=null)host.Close();if(app.widget!=null)app.widget.Close();app.Shutdown();}if(Directory.Exists(root))Directory.Delete(root,true);}
  }

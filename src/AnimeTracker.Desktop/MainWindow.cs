@@ -57,7 +57,7 @@ public sealed partial class MainWindow:Window
     static TabItem Tab(string name,Control content){var tab=new TabItem{Header=name,Content=content};Avalonia.Automation.AutomationProperties.SetName(tab,name);return tab;}
     public Task AddFromWidget(){App.CurrentApp.OpenLibrary();return AddAnime();}
     async Task Act(Action action,Window? owner=null){try{action();}catch(Exception e){await Paper.Message(owner??this,e.Message,"Не удалось выполнить действие");}}
-    async Task Modal(Window dialog,Window? owner=null){store.ModalDepth++;try{await dialog.ShowDialog(owner??this);}finally{store.ModalDepth--;}}
+    async Task Modal(Window dialog,Window? owner=null){store.ModalDepth++;App.CurrentApp.PauseUpdateNotice();try{await dialog.ShowDialog(owner??this);}finally{store.ModalDepth--;App.CurrentApp.QueueUpdateNotice();}}
     async Task Edit(Anime anime){await EditAnime(anime);RefreshCommon();}
     TabItem LibraryTab()
     {

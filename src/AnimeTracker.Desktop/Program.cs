@@ -59,7 +59,7 @@ public sealed partial class App : Application
             if(OperatingSystem.IsLinux()||!Program.Arguments.Contains("--startup")||tray==null)LibraryWindow.Show();
             if(Store.Widget.Enabled)Widget.Show();
             refresh = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
-            refresh.Tick += async (_,_) => { refresh.Interval = TimeSpan.FromMinutes(15); if(updating)return;updating=true;try{await Store.RefreshEpisodes(false,lifetime.Token);}catch(OperationCanceledException){}catch(Exception e){LibraryWindow.SetMessage("Обновление каталога недоступно: "+e.Message);}finally{updating=false;} if(Updates!=null)await Updates.Check(false,lifetime.Token); };
+            refresh.Tick += async (_,_) => { refresh.Interval = TimeSpan.FromMinutes(15); if(updating)return;updating=true;try{await Store.RefreshEpisodes(false,lifetime.Token);}catch(OperationCanceledException){}catch(Exception e){LibraryWindow.SetMessage("Обновление каталога недоступно: "+e.Message);}finally{updating=false;} if(Updates!=null)await Updates.Check(false,lifetime.Token);TryShowUpdateNotice(); };
             if(!Program.Arguments.Contains("--linux-smoke-test"))refresh.Start();
             if(OperatingSystem.IsLinux())
             {
