@@ -30,6 +30,9 @@ public static class UpdateNoticeTests {
  }
  static void Check(bool value,string name){if(!value)throw new Exception("Update notice: "+name);}
  public static async Task Run(string root){
+  var time=TimeSpan.Zero;var lifetime=new UpdateNoticeLifetime(()=>time);Check(lifetime.Remaining==TimeSpan.FromSeconds(5),"display duration");
+  time=TimeSpan.FromSeconds(2);lifetime.SetPaused(true);time+=TimeSpan.FromHours(1);lifetime.SetPaused(true);Check(lifetime.Remaining==TimeSpan.FromSeconds(3),"hover/focus did not pause remaining time");
+  lifetime.SetPaused(false);time+=TimeSpan.FromMilliseconds(2999);Check(lifetime.Remaining==TimeSpan.FromMilliseconds(1),"resumed timer reset or closed early");time+=TimeSpan.FromMilliseconds(1);Check(lifetime.Remaining==TimeSpan.Zero,"five active seconds did not expire");
   root=Path.Combine(root,"update-notices");Directory.CreateDirectory(root);var path=Path.Combine(root,"update-settings.xml");
   File.WriteAllText(path,"<updates automatic='true' development='false'/>");
   using(var f=new Fixture(root)){
