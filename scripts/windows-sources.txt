@@ -40,3 +40,10 @@ src/AnimeTracker.Windows/ThemeTests.cs
 src/AnimeTracker.Core/AppearanceBinding.cs
 src/AnimeTracker.Windows/SystemAppearance.cs
 tests/Shared/SystemAppearanceTests.cs
+src/AnimeTracker.Core/UpdateRelease.cs
+src/AnimeTracker.Core/UpdatePackage.cs
+src/AnimeTracker.Core/UpdateInstall.cs
+src/AnimeTracker.Core/AppUpdates.cs
+src/AnimeTracker.Windows/AppUpdates.cs
+tests/Shared/UpdateTests.cs
+tests/Shared/UpdateProcessTests.cs

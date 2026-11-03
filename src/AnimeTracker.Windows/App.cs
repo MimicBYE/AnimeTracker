@@ -58,6 +58,9 @@ public partial class Tracker : Application {
  }
  [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
  [STAThread] public static void Main(string[] args) {
+  int probeCode;if(UpdateProcessTests.Handle(args,out probeCode)){Environment.ExitCode=probeCode;return;}
+  if(args.Length==1&&args[0]=="--update-process-test"){try{UpdateProcessTests.Run(System.Reflection.Assembly.GetExecutingAssembly().Location,"windows-x64",true);File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"update-process-test.txt"),"PASS: real isolated parent/helper/restart, readiness, failure and timeout rollback; no UI or OS changes");}catch(Exception error){File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"update-process-test.txt"),"FAIL "+error);Environment.ExitCode=1;}return;}
+  if (args.Length==2&&args[0]=="--apply-update") { Environment.ExitCode=UpdateInstall.Run(args[1]); return; }
   if (args.Contains("--theme-test")) { ThemeTest(args); return; }
   if (args.Contains("--self-test")) { SelfTest(); return; }
   if (args.Contains("--top-export-test")) { VerifyTopExport(); return; }
@@ -77,7 +80,7 @@ public partial class Tracker : Application {
   StartupDiagnostics.Write("initializing");
   InitializeThemeResources();
   service=new TrackerService(Path.GetDirectoryName(dataPath));
-  BindAppearance(new WindowsSystemAppearance());
+  BindAppearance(new WindowsSystemAppearance());InitializeUpdates();
   if(service.Error.Length>0)ShowMessage(service.Error,storageBlocked?"Ошибка загрузки":"Загрузка данных");
   preferences=service.View;
   StartupDiagnostics.Write("library-loaded");
@@ -90,6 +93,7 @@ public partial class Tracker : Application {
   desktopTimer.Start();
   if(e.Args.Contains("--library")||(!widgetOptions.Enabled&&!e.Args.Contains("--startup"))) OpenLibrary();
   if(e.Args.Contains("--verify")) Dispatcher.BeginInvoke(new Action(VerifyWidget),System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+  Dispatcher.BeginInvoke(new Action(()=>UpdateInstall.Acknowledge(e.Args,appUpdates.Build.packageVersion)),System.Windows.Threading.DispatcherPriority.ApplicationIdle);
   StartupDiagnostics.Write("running mode="+(e.Args.Contains("--startup")?"startup":"manual")+" library-open="+(full!=null)+" widget-enabled="+widgetOptions.Enabled);
  }
  async void VerifyWidget() {
@@ -233,6 +237,7 @@ public partial class Tracker : Application {
   var menu=new Forms.ContextMenuStrip();
   menu.Items.Add("Открыть библиотеку",null,delegate { Dispatcher.Invoke(new Action(OpenLibrary)); });
   menu.Items.Add("Настройки…",null,delegate { Dispatcher.Invoke(new Action(OpenSettings)); });
+  menu.Items.Add("Обновления приложения…",null,delegate{Dispatcher.Invoke(new Action(delegate{OpenLibrary();OpenUpdates(settingsDraft);}));});
   menu.Items.Add("Импорт из MyAnimeList…",null,delegate { Dispatcher.Invoke(new Action(delegate { OpenLibrary(); ImportMal(); })); });
   menu.Items.Add("Показать / скрыть виджет",null,delegate { Dispatcher.Invoke(new Action(delegate { SaveWidgetOptions(widgetOptions.Pinned,widgetOptions.Style,!widgetOptions.Enabled); })); });
   menu.Items.Add("Вернуть виджет на экран",null,delegate { Dispatcher.Invoke(new Action(RestoreWidget)); });
@@ -449,7 +454,7 @@ public partial class Tracker : Application {
    var widgetTest=new Library(); widgetTest.Items.Add(older); widgetTest.Items.Add(recent);
    if(LatestAnime(widgetTest)!=recent) throw new Exception("Widget must show latest user change regardless of status");
    older.Updated=recent.Updated.AddMinutes(1); if(LatestAnime(widgetTest)!=older) throw new Exception("Widget follows user edits");
-   ViewPreferences.Test(dir);AppearanceTests.Run(dir);SystemAppearanceTests.Run(dir);SettingsBackupTest(dir);LibraryStorageTests.Run(dir);AutoStart.Test(dir);StartupDiagnostics.Test(dir);TrackerServiceTests.Run(dir).GetAwaiter().GetResult();
+   UpdateTests.Run(dir).GetAwaiter().GetResult();ViewPreferences.Test(dir);AppearanceTests.Run(dir);SystemAppearanceTests.Run(dir);SettingsBackupTest(dir);LibraryStorageTests.Run(dir);AutoStart.Test(dir);StartupDiagnostics.Test(dir);TrackerServiceTests.Run(dir).GetAwaiter().GetResult();
    var completion=new Anime { Watched=3,Total=12 };
    completion.SetProgress(3,12,"completed"); if(completion.Watched!=12 || completion.Status!="completed") throw new Exception("Completed fills known total");
    completion.SetProgress(5,0,"completed"); if(completion.Watched!=5) throw new Exception("Unknown total preserves progress");

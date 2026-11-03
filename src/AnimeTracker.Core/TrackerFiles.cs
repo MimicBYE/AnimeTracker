@@ -9,7 +9,7 @@ public sealed class TrackerFiles {
  public string Root {get;private set;}
  public string ConfigRoot {get;private set;}
  public string CacheRoot {get;private set;}
- static readonly string[] Settings={"view-settings.xml","widget-settings.xml","appearance-settings.xml","mac-widget-position.xml","linux-widget-position.xml"};
+ static readonly string[] Settings={"view-settings.xml","widget-settings.xml","appearance-settings.xml","update-settings.xml","mac-widget-position.xml","linux-widget-position.xml"};
  static readonly string[] Caches={"schedule.xml","evening-cache.xml","top-kinds.xml"};
  public TrackerFiles(string root) : this(root,root,root) {}
  public TrackerFiles(string root,string config,string cache) {Root=Absolute(root);ConfigRoot=Absolute(config);CacheRoot=Absolute(cache);}

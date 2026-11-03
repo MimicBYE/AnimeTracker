@@ -81,7 +81,7 @@ function New-BuildInfo {
     param([string]$BaseVersion,[string]$PackageVersion,[string]$Channel,[string]$Commit='local')
     Test-PackageVersion $BaseVersion $PackageVersion $Channel
     if ($Commit -ne 'local' -and $Commit -notmatch '^[a-f0-9]{40}$') { throw 'Invalid build commit SHA.' }
-    return [ordered]@{ applicationVersion=$BaseVersion; packageVersion=$PackageVersion; channel=$Channel; commit=$Commit }
+    return [ordered]@{ updateProtocol=1; applicationVersion=$BaseVersion; packageVersion=$PackageVersion; channel=$Channel; commit=$Commit }
 }
 
 function Get-ReleaseAssets {
@@ -97,7 +97,7 @@ function Test-ReleasePackages {
     param([Parameter(Mandatory)][string]$Directory,[string]$BaseVersion,[string]$PackageVersion,[string]$Channel,[string]$Commit)
     $null=New-BuildInfo $BaseVersion $PackageVersion $Channel $Commit
     Add-Type -AssemblyName System.IO.Compression.FileSystem
-    $blocked='(^|/)(data|covers|imports|bin|obj|artifacts|\.git|\.tools)(/|$)|(^|/)(library|watch-choices|widget-settings|appearance-settings|view-settings|personal-order|arcs)\.xml$|(^|/)\.env($|\.)|\.(pfx|p12|pem|key|pdb|tmp|bak)$'
+    $blocked='(^|/)(data|covers|imports|bin|obj|artifacts|\.git|\.tools)(/|$)|(^|/)(library|watch-choices|widget-settings|appearance-settings|update-settings|view-settings|personal-order|arcs)\.xml$|(^|/)\.env($|\.)|\.(pfx|p12|pem|key|pdb|tmp|bak)$'
     foreach($asset in Get-ReleaseAssets $Directory $PackageVersion) {
         if($asset.Name.EndsWith('-linux-x64.tar.gz')){Import-Module (Join-Path $PSScriptRoot 'LinuxPackage.psm1') -Force;Test-LinuxPackage $asset.Path $BaseVersion $PackageVersion $Channel $Commit;continue}
         $zip=[IO.Compression.ZipFile]::OpenRead($asset.Path)
@@ -113,7 +113,7 @@ function Test-ReleasePackages {
             foreach($name in $required){if(!$zip.GetEntry($prefix+$name)){throw "Missing release entry: $name"}}
             $metadata=$zip.GetEntry($prefix+'BUILD-INFO.json');if(!$metadata){throw 'Missing build provenance.'}
             $reader=[IO.StreamReader]::new($metadata.Open());try{$info=$reader.ReadToEnd()|ConvertFrom-Json}finally{$reader.Dispose()}
-            if($info.applicationVersion -ne $BaseVersion -or $info.packageVersion -ne $PackageVersion -or $info.channel -ne $Channel -or $info.commit -ne $Commit){throw 'Artifacts were built from different release contexts.'}
+            if($info.updateProtocol -ne 1 -or $info.applicationVersion -ne $BaseVersion -or $info.packageVersion -ne $PackageVersion -or $info.channel -ne $Channel -or $info.commit -ne $Commit){throw 'Artifacts were built from different release contexts.'}
             if(!$prefix){
                 $hostEntry=$zip.GetEntry('Anime Tracker.app/Contents/MacOS/AnimeTracker')
                 if((($hostEntry.ExternalAttributes -shr 16) -band 0x1ff) -ne 493){throw 'Mac ZIP lost executable permissions.'}
