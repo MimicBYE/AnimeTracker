@@ -51,6 +51,7 @@ internal static class Program {
    }
    var settings=SettingsFlowTests.Run(root,args.Length==2&&args[0]=="--screenshots"?args[1]:null);
    var theme=ThemeTests.Run(root,args.Length==2&&args[0]=="--screenshots"?args[1]:null);
+   Console.WriteLine(JsonSerializer.Serialize(UpdateNotificationTests.Run(root)));
    Console.WriteLine(JsonSerializer.Serialize(new{theme,os=System.Runtime.InteropServices.RuntimeInformation.OSDescription,framework=Environment.Version.ToString(),mode="input timing on unshown Avalonia controls, then transparent native-window checks; synthetic data, no covers/network; not frame-time measurements",results,settings},new JsonSerializerOptions{WriteIndented=true}));
    return 0;
   } catch(Exception e){Console.Error.WriteLine(e);return 1;}
