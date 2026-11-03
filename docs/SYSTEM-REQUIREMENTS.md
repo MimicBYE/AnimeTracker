@@ -1,6 +1,6 @@
 # Системные требования
 
-Обновлено: 3 ноября 2026. Приложение 1.1.1; Avalonia-порт 12.1.4 / .NET 10, Windows WPF / .NET Framework 4.8. План расширения — [PLATFORM-ROADMAP.md](PLATFORM-ROADMAP.md), [issue #2](https://github.com/MimicBYE/AnimeTracker/issues/2).
+Обновлено: 3 ноября 2026. Приложение 1.1.2; Avalonia-порт 12.1.4 / .NET 10, Windows WPF / .NET Framework 4.8. План расширения — [PLATFORM-ROADMAP.md](PLATFORM-ROADMAP.md), [issue #2](https://github.com/MimicBYE/AnimeTracker/issues/2).
 
 AT-28: установщик использует существующие HTTP/ZIP API и TAR уже поставляемого .NET 10. Новых NuGet-зависимостей/таймеров нет. Нужны HTTPS к GitHub Releases и права записи в папку приложения. Сохраняются архив (до 512 МиБ), распакованный runtime (до 1 ГиБ), прежняя программа и полный снимок данных. Предварительный дополнительный бюджет: архив + удвоенный runtime + размер данных; это расчёт, не замер. Копии автоматически не удаляются, место растёт с попытками; достаточность диска заранее не гарантируется, ошибка копирования отменяет установку. Mac использует системный codesign; UAC/sudo/Gatekeeper не обходятся. [Инструкция](UPDATES.md), [проверки](validation/2026-11-03-app-updates.md).
 
